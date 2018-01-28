@@ -15,8 +15,8 @@ public class RateLimiters {
             private ForkedRateLimiter underlying = ForkedRateLimiter.create(permitsPerSecond, ticker);
 
             @Override
-            public boolean tryAcquire(int permits) {
-                return underlying.tryAcquire(permits);
+            public boolean tryAcquire(long permitsPerSecond) {
+                return permitsPerSecond <= Integer.MAX_VALUE && underlying.tryAcquire((int) permitsPerSecond);
             }
 
             @Override

@@ -7,11 +7,8 @@ import java.util.stream.LongStream;
 
 import static com.duprasville.limiters.util.Utils.spread;
 import static java.lang.String.format;
-import static org.hamcrest.CoreMatchers.both;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.number.OrderingComparison.greaterThanOrEqualTo;
-import static org.hamcrest.number.OrderingComparison.lessThanOrEqualTo;
 
 //[seed -1456281816] 14182756 requests per 0 ticks over 0 ticks
 

@@ -1,28 +1,26 @@
 package com.duprasville.limiters.comms;
 
-public class Node {
+public class TestCommNode implements CommNode {
     private final long nodeId;
     private MessageReceiver recv;
 
-    Node(long nodeId) {
+    TestCommNode(long nodeId) {
         this.nodeId = nodeId;
     }
 
-    public long getNodeId() {
-        return nodeId;
-    }
-
+    @Override
     public void onReceive(MessageReceiver recv) {
         this.recv = recv;
     }
 
-    public void deliver(Node src, Node dst, Message msg) {
+    @Override
+    public void deliver(CommNode src, CommNode dst, Message msg) {
         recv.apply(src, dst, msg);
     }
 
     @Override
     public String toString() {
-        return "Node{" +
+        return "CommNode{" +
                 "nodeId=" + nodeId +
                 '}';
     }
