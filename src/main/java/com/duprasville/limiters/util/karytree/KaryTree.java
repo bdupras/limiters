@@ -52,7 +52,7 @@ public class KaryTree {
     }
 
     public long getWidth() {
-        return widthOfLevel(getNodesOfBaseLevel());
+        return widthOfLevel(getBaseLevel());
     }
 
     public long getCapacity() {
@@ -91,7 +91,7 @@ public class KaryTree {
         return minMaxArray(min, max);
     }
 
-    public long getNodesOfBaseLevel() {
+    public long getBaseLevel() {
         return getHeight() - 1L;
     }
 

@@ -4,8 +4,7 @@ import com.duprasville.limiters.comms.*;
 import com.duprasville.limiters.util.karytree.KaryTree;
 import org.junit.jupiter.api.Test;
 
-import java.util.Deque;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -24,11 +23,14 @@ class TreeFillRateLimiterTest {
 
         TreeFillRateLimiter treefill = new TreeFillRateLimiter(permitsPerSecond, nodeId, clusterSize, karyTree, messageSender);
 
-        Deque<Object> receivedAtNodeZero = new ConcurrentLinkedDeque<>();
-        messageSender.onSend((s, d, m) -> receivedAtNodeZero.offer(m));
+        AtomicBoolean onSendCalled = new AtomicBoolean(false);
+        messageSender.onSend((s, d, m) -> {
+            onSendCalled.set(true);
+            messageSender.receive(s, d, m);
+        });
 
         boolean acquired = treefill.tryAcquire(2L);
         assertThat(acquired, is(true));
-        assertThat(receivedAtNodeZero.size(), equalTo(1));
+        assertThat(onSendCalled.get(), is(true));
     }
 }
