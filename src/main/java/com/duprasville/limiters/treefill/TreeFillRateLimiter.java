@@ -1,24 +1,28 @@
 package com.duprasville.limiters.treefill;
 
 import com.duprasville.limiters.RateLimiter;
-import com.duprasville.limiters.comms.MessageSender;
+import com.duprasville.limiters.comms.MessageSource;
 import com.duprasville.limiters.util.karytree.KaryTree;
 
 import static java.lang.String.format;
 
-public class TreeFillRateLimiter implements RateLimiter {
-    private long permitsPerSecond;
+public class TreeFillRateLimiter implements RateLimiter, TreeFillMessageSink {
+    private volatile long permitsPerSecond;
+    private volatile long rounds;
+
     private final long clusterSize;
     private final KaryTree karyTree;
-    private final MessageSender messageSender;
+    private final MessageSource messageSource;
 
     // interesting info about this node within the tree
     private final long nodeId;
     private final long levelId;
     private final long parentId;
+    private final long parentLevelId;
+    private final long[] parentLevelNodeIds;
     private final long[] childIds;
-    private final long baseLevel;
-    private final long[] baseIds;
+    private final long baseLevelId;
+    private final long[] baseNodeIds;
 
     // locations of a node within a detectTree: root, inner, or base
     private final boolean isRoot;
@@ -30,22 +34,23 @@ public class TreeFillRateLimiter implements RateLimiter {
             long nodeId,
             long clusterSize,
             KaryTree karyTree,
-            MessageSender messageSender
+            MessageSource messageSource
     ) {
         this.permitsPerSecond = permitsPerSecond;
         this.clusterSize = clusterSize;
         this.karyTree = karyTree;
-        this.messageSender = messageSender;
-        this.messageSender.onReceive(receiveMessage);
+        this.messageSource = messageSource;
 
         this.nodeId = nodeId;
         this.levelId = karyTree.levelOfNode(nodeId);
         this.parentId = karyTree.parentOfNode(nodeId);
-        this.baseLevel = karyTree.getBaseLevel();
-        this.baseIds = karyTree.nodesOfLevel(this.baseLevel);
+        this.parentLevelId = karyTree.levelOfNode(parentId);
+        this.parentLevelNodeIds = karyTree.nodesOfLevel(parentLevelId);
+        this.baseLevelId = karyTree.getBaseLevel();
+        this.baseNodeIds = karyTree.nodesOfLevel(this.baseLevelId);
 
         this.isRoot = nodeId == parentId;
-        this.isBase = levelId != baseLevel;
+        this.isBase = levelId != baseLevelId;
 
         // TODO: have the tree return empty[] instead of IDs beyond the tree's capacity
         this.childIds = this.isBase ? new long[]{} : karyTree.childrenOfNode(nodeId);
@@ -54,7 +59,8 @@ public class TreeFillRateLimiter implements RateLimiter {
     @Override
     public boolean tryAcquire(long permits) {
         if (!isRoot) {
-            sendInform(parentId, format("tryAcquire(%d) invoked", permits));
+            messageSource.send(new Inform(nodeId, parentId, format("tryAcquire(%d) invoked", permits)));
+            messageSource.send(new Detect(nodeId, parentId, 0L, permits));
         }
         return true;
     }
@@ -62,19 +68,17 @@ public class TreeFillRateLimiter implements RateLimiter {
     @Override
     public void setRate(long permitsPerSecond) {
         this.permitsPerSecond = permitsPerSecond;
+        double logOfWoverN = karyTree.log((double)permitsPerSecond / (double)clusterSize);
+        this.rounds = (long)(Math.ceil(logOfWoverN));
     }
 
-    private final MessageSender.MessageReceiver receiveMessage = (src, dst, msg) -> {
-        if (!(msg instanceof Message))
-            throw new IllegalStateException("Treefill cannot handle messages of type: " + msg.getClass().getName());
-        ((Message) msg).deliver(src, dst, this);
-    };
-
-    void sendInform(long dst, String msg) {
-        messageSender.send(nodeId, dst, new Inform(msg));
+    @Override
+    public void receive(Inform inform) {
+        System.out.println(inform);
     }
 
-    void receiveInform(long src, long dst, Inform inform) {
-        System.out.println(format("Treefill Inform message received. %d -> %d : %s", src, dst, inform.msg));
+    @Override
+    public void receive(Detect detect) {
+        System.out.println(detect);
     }
 }

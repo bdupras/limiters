@@ -95,6 +95,10 @@ public class KaryTree {
         return getHeight() - 1L;
     }
 
+    public double log(double n) {
+        return Math.log(n) / Math.log(ary);
+    }
+
     private long[] minMaxArray(long min, long max) {
         long width = max - min + 1;
         if (width > Integer.MAX_VALUE) throw new ArrayIndexOutOfBoundsException("level is too long");
@@ -157,5 +161,4 @@ public class KaryTree {
     private static long log_b(long base, long n) {
         return (long) (Math.log(n) / Math.log(base));
     }
-
 }
