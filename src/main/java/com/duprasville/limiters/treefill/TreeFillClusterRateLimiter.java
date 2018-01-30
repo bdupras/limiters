@@ -1,12 +1,12 @@
 package com.duprasville.limiters.treefill;
 
-import com.duprasville.limiters.RateLimiter;
+import com.duprasville.limiters.ClusterRateLimiter;
 import com.duprasville.limiters.comms.MessageSource;
 import com.duprasville.limiters.util.karytree.KaryTree;
 
 import static java.lang.String.format;
 
-public class TreeFillRateLimiter implements RateLimiter, TreeFillMessageSink {
+public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillMessageSink {
     private volatile long permitsPerSecond;
     private volatile long rounds;
 
@@ -29,14 +29,13 @@ public class TreeFillRateLimiter implements RateLimiter, TreeFillMessageSink {
     private final boolean isBase;
 
     // TODO: create RootNode, InnerNode, and BaseNode specializations?
-    public TreeFillRateLimiter(
+    public TreeFillClusterRateLimiter(
             long permitsPerSecond,
             long nodeId,
             long clusterSize,
             KaryTree karyTree,
             MessageSource messageSource
     ) {
-        this.permitsPerSecond = permitsPerSecond;
         this.clusterSize = clusterSize;
         this.karyTree = karyTree;
         this.messageSource = messageSource;
@@ -54,6 +53,8 @@ public class TreeFillRateLimiter implements RateLimiter, TreeFillMessageSink {
 
         // TODO: have the tree return empty[] instead of IDs beyond the tree's capacity
         this.childIds = this.isBase ? new long[]{} : karyTree.childrenOfNode(nodeId);
+
+        setRate(permitsPerSecond);
     }
 
     @Override
@@ -68,8 +69,7 @@ public class TreeFillRateLimiter implements RateLimiter, TreeFillMessageSink {
     @Override
     public void setRate(long permitsPerSecond) {
         this.permitsPerSecond = permitsPerSecond;
-        double logOfWoverN = karyTree.log((double)permitsPerSecond / (double)clusterSize);
-        this.rounds = (long)(Math.ceil(logOfWoverN));
+        this.rounds = TreeFillMath.rounds(karyTree, permitsPerSecond, clusterSize);
     }
 
     @Override

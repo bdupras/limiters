@@ -25,9 +25,9 @@ import java.util.concurrent.TimeUnit;
 
 abstract class ForkedSmoothRateLimiter extends ForkedRateLimiter {
   /*
-   * How is the RateLimiter designed, and why?
+   * How is the ClusterRateLimiter designed, and why?
    *
-   * The primary feature of a RateLimiter is its "stable rate", the maximum rate that
+   * The primary feature of a ClusterRateLimiter is its "stable rate", the maximum rate that
    * is should allow at normal conditions. This is enforced by "throttling" incoming
    * requests as needed, i.e. compute, for an incoming request, the appropriate throttle time,
    * and make the calling thread wait as much.
@@ -40,14 +40,14 @@ abstract class ForkedSmoothRateLimiter extends ForkedRateLimiter {
    * another 100ms. At this rate, serving 15 fresh permits (i.e. for an acquire(15) request)
    * naturally takes 3 seconds.
    *
-   * It is important to realize that such a RateLimiter has a very superficial memory
-   * of the past: it only remembers the last request. What if the RateLimiter was unused for
+   * It is important to realize that such a ClusterRateLimiter has a very superficial memory
+   * of the past: it only remembers the last request. What if the ClusterRateLimiter was unused for
    * a long period of time, then a request arrived and was immediately granted?
-   * This RateLimiter would immediately forget about that past underutilization. This may
+   * This ClusterRateLimiter would immediately forget about that past underutilization. This may
    * result in either underutilization or overflow, depending on the real world consequences
    * of not using the expected rate.
    *
-   * Past underutilization could mean that excess resources are available. Then, the RateLimiter
+   * Past underutilization could mean that excess resources are available. Then, the ClusterRateLimiter
    * should speed up for a while, to take advantage of these resources. This is important
    * when the rate is applied to networking (limiting bandwidth), where past underutilization
    * typically translates to "almost empty buffers", which can be filled immediately.
@@ -68,9 +68,9 @@ abstract class ForkedSmoothRateLimiter extends ForkedRateLimiter {
    *
    * How this works is best explained with an example:
    *
-   * For a RateLimiter that produces 1 token per second, every second
-   * that goes by with the RateLimiter being unused, we increase storedPermits by 1.
-   * Say we leave the RateLimiter unused for 10 seconds (i.e., we expected a request at time
+   * For a ClusterRateLimiter that produces 1 token per second, every second
+   * that goes by with the ClusterRateLimiter being unused, we increase storedPermits by 1.
+   * Say we leave the ClusterRateLimiter unused for 10 seconds (i.e., we expected a request at time
    * X, but we are at time X + 10 seconds before a request actually arrives; this is
    * also related to the point made in the last paragraph), thus storedPermits
    * becomes 10.0 (assuming maxStoredPermits >= 10.0). At that point, a request of acquire(3)
@@ -117,13 +117,13 @@ abstract class ForkedSmoothRateLimiter extends ForkedRateLimiter {
    * exactly the same cost as fresh ones (1/QPS is the cost for each). We use this trick later.
    *
    * If we pick a function that goes /below/ that horizontal line, it means that we reduce
-   * the area of the function, thus time. Thus, the RateLimiter becomes /faster/ after a
+   * the area of the function, thus time. Thus, the ClusterRateLimiter becomes /faster/ after a
    * period of underutilization. If, on the other hand, we pick a function that
    * goes /above/ that horizontal line, then it means that the area (time) is increased,
-   * thus storedPermits are more costly than fresh permits, thus the RateLimiter becomes
+   * thus storedPermits are more costly than fresh permits, thus the ClusterRateLimiter becomes
    * /slower/ after a period of underutilization.
    *
-   * Last, but not least: consider a RateLimiter with rate of 1 permit per second, currently
+   * Last, but not least: consider a ClusterRateLimiter with rate of 1 permit per second, currently
    * completely unused, and an expensive acquire(100) request comes. It would be nonsensical
    * to just wait for 100 seconds, and /then/ start the actual task. Why wait without doing
    * anything? A much better approach is to /allow/ the request right away (as if it was an
@@ -131,13 +131,13 @@ abstract class ForkedSmoothRateLimiter extends ForkedRateLimiter {
    * we allow starting the task immediately, and postpone by 100 seconds future requests,
    * thus we allow for work to get done in the meantime instead of waiting idly.
    *
-   * This has important consequences: it means that the RateLimiter doesn't remember the time
+   * This has important consequences: it means that the ClusterRateLimiter doesn't remember the time
    * of the _last_ request, but it remembers the (expected) time of the _next_ request. This
    * also enables us to tell immediately (see tryAcquire(timeout)) whether a particular
    * timeout is enough to get us to the point of the next scheduling time, since we always
-   * maintain that. And what we mean by "an unused RateLimiter" is also defined by that
+   * maintain that. And what we mean by "an unused ClusterRateLimiter" is also defined by that
    * notion: when we observe that the "expected arrival time of the next request" is actually
-   * in the past, then the difference (now - past) is the amount of time that the RateLimiter
+   * in the past, then the difference (now - past) is the amount of time that the ClusterRateLimiter
    * was formally unused, and it is that amount of time which we translate to storedPermits.
    * (We increase storedPermits with the amount of permits that would have been produced
    * in that idle time). So, if rate == 1 permit per second, and arrivals come exactly
@@ -165,9 +165,9 @@ abstract class ForkedSmoothRateLimiter extends ForkedRateLimiter {
      *        0 +----------+-------+--------------> storedPermits
      *          0 thresholdPermits maxPermits
      * Before going into the details of this particular function, let's keep in mind the basics:
-     * 1) The state of the RateLimiter (storedPermits) is a vertical line in this figure.
-     * 2) When the RateLimiter is not used, this goes right (up to maxPermits)
-     * 3) When the RateLimiter is used, this goes left (down to zero), since if we have storedPermits,
+     * 1) The state of the ClusterRateLimiter (storedPermits) is a vertical line in this figure.
+     * 2) When the ClusterRateLimiter is not used, this goes right (up to maxPermits)
+     * 3) When the ClusterRateLimiter is used, this goes left (down to zero), since if we have storedPermits,
      *    we serve from those first
      * 4) When _unused_, we go right at a constant rate! The rate at which we move to
      *    the right is chosen as maxPermits / warmupPeriod.  This ensures that the time it takes to
@@ -262,13 +262,13 @@ abstract class ForkedSmoothRateLimiter extends ForkedRateLimiter {
     }
 
     /**
-     * This implements a "bursty" RateLimiter, where storedPermits are translated to
-     * zero throttling. The maximum number of permits that can be saved (when the RateLimiter is
-     * unused) is defined in terms of time, in this sense: if a RateLimiter is 2qps, and this
+     * This implements a "bursty" ClusterRateLimiter, where storedPermits are translated to
+     * zero throttling. The maximum number of permits that can be saved (when the ClusterRateLimiter is
+     * unused) is defined in terms of time, in this sense: if a ClusterRateLimiter is 2qps, and this
      * time is specified as 10 seconds, we can save up to 2 * 10 = 20 permits.
      */
     static final class ForkedSmoothBursty extends ForkedSmoothRateLimiter {
-        /** The work (permits) of how many seconds can be saved up if this RateLimiter is unused? */
+        /** The work (permits) of how many seconds can be saved up if this ClusterRateLimiter is unused? */
         final double maxBurstSeconds;
 
         ForkedSmoothBursty(SleepingStopwatch stopwatch, double maxBurstSeconds) {

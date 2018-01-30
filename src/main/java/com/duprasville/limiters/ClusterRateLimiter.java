@@ -1,6 +1,6 @@
 package com.duprasville.limiters;
 
-public interface RateLimiter {
+public interface ClusterRateLimiter {
     boolean tryAcquire(long permits);
 
     default boolean tryAcquire() {

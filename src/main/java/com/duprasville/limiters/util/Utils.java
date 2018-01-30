@@ -16,7 +16,7 @@ public class Utils {
      *
      * @return units the given pos receives
      */
-    public static long spread(long pos, long units, long positions) {
+    public static long spread(long units, long pos, long positions) {
         long whole = units / positions;
         long rem = units % positions;
         if (rem == 0) {

@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-class TreeFillRateLimiterTest {
+class TreeFillClusterRateLimiterTest {
 
     @Test
     void tryAcquireInt() {
@@ -22,7 +22,7 @@ class TreeFillRateLimiterTest {
         long clusterSize = karyTree.getCapacity();
         long permitsPerSecond = 5L;
 
-        TreeFillRateLimiter treefill = new TreeFillRateLimiter(permitsPerSecond, nodeId, clusterSize, karyTree, messageSource);
+        TreeFillClusterRateLimiter treefill = new TreeFillClusterRateLimiter(permitsPerSecond, nodeId, clusterSize, karyTree, messageSource);
 
         AtomicBoolean onSendCalled = new AtomicBoolean(false);
         messageSource.onSend((m) -> onSendCalled.set(true));
@@ -45,7 +45,7 @@ class TreeFillRateLimiterTest {
         long clusterSize = karyTree.getCapacity(); // N
         long permitsPerSecond = 500L; // W
 
-        TreeFillRateLimiter treefill = new TreeFillRateLimiter(permitsPerSecond, nodeId, clusterSize, karyTree, messageSource);
+        TreeFillClusterRateLimiter treefill = new TreeFillClusterRateLimiter(permitsPerSecond, nodeId, clusterSize, karyTree, messageSource);
         boolean acquired = treefill.tryAcquire(2L);
 
         // rounds = log_K(W/N) where,

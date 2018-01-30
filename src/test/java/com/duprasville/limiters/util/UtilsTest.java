@@ -29,7 +29,7 @@ class UtilsTest {
             long expected = requests * periods;
 
             long actual = LongStream.range(0, duration).boxed()
-                    .reduce(0L, (sum, tick) -> sum + spread(tick, requests, perTicks));
+                    .reduce(0L, (sum, tick) -> sum + spread(requests, tick, perTicks));
 
             assertThat(
                     format("[seed %d] %d requests per %d ticks over %d ticks", seed, requests, perTicks, duration),
@@ -49,7 +49,7 @@ class UtilsTest {
         long expected = requests * periods;
 
         long actual = LongStream.range(0, duration).boxed()
-                .reduce(0L, (sum, tick) -> sum + spread(tick, requests, perTicks));
+                .reduce(0L, (sum, tick) -> sum + spread(requests, tick, perTicks));
 
         assertThat(
                 format("[seed %d] %d requests per %d ticks over %d ticks", 0, requests, perTicks, duration),
@@ -65,7 +65,7 @@ class UtilsTest {
         long perServerNodes = 3L;
 
         long actual = LongStream.range(0, perServerNodes).boxed()
-                .reduce(0L, (sum, server) -> sum + spread(server, rps, perServerNodes));
+                .reduce(0L, (sum, server) -> sum + spread(rps, server, perServerNodes));
 
         assertThat(
                 format("[seed %d] %d rps per %d servers", 0, rps, perServerNodes),
