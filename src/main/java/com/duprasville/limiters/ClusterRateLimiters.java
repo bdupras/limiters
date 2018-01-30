@@ -4,14 +4,12 @@ import com.duprasville.limiters.util.Utils;
 import com.google.common.base.Ticker;
 import com.google.common.util.concurrent.ForkedRateLimiter;
 
-import static com.duprasville.limiters.util.Utils.spread;
-
 public class ClusterRateLimiters {
     public static final ClusterRateLimiter UNLIMITED = (permits) -> true;
     public static final ClusterRateLimiter NEVER = (permits) -> false;
     public static final Ticker SYSTEM_TICKER = Ticker.systemTicker();
 
-    public static ClusterRateLimiter createSimple(long permitsPerSecond, long clusterShard, long clusterSize, Ticker ticker) {
+    public static ClusterRateLimiter createPerClusterShard(long permitsPerSecond, long clusterShard, long clusterSize, Ticker ticker) {
         long shardShare = Utils.spread(clusterShard, permitsPerSecond, clusterSize);
 
         return new ClusterRateLimiter() {
@@ -29,15 +27,7 @@ public class ClusterRateLimiters {
         };
     }
 
-    public static ClusterRateLimiter createSimple(long permitsPerSecond, long clusterShard, long clusterSize) {
-        return createSimple(permitsPerSecond, clusterShard, clusterSize, SYSTEM_TICKER);
-    }
-
-    public static ClusterRateLimiter createPerClusterNode(long permitsPerSecond, long clusterShard, long clusterSize, Ticker ticker) {
-        return createSimple(permitsPerSecond, clusterShard, clusterSize, ticker);
-    }
-
-    public static ClusterRateLimiter createPerClusterNode(long permitsPerSecond, long clusterShard, long clusterSize) {
-        return createPerClusterNode(clusterSize, clusterShard, permitsPerSecond, SYSTEM_TICKER);
+    public static ClusterRateLimiter createPerClusterShard(long permitsPerSecond, long clusterShard, long clusterSize) {
+        return createPerClusterShard(clusterSize, clusterShard, permitsPerSecond, SYSTEM_TICKER);
     }
 }
