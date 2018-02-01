@@ -7,61 +7,34 @@ import com.duprasville.limiters.util.karytree.KaryTree;
 import static java.lang.String.format;
 
 public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillMessageSink {
+    private NodeConfig nodeConfig;
     private volatile long permitsPerSecond;
     private volatile long rounds;
 
-    private final long clusterSize;
-    private final KaryTree karyTree;
     private final MessageSource messageSource;
-
-    // interesting info about this node within the tree
-    private final long nodeId;
-    private final long levelId;
-    private final long parentId;
-    private final long parentLevelId;
-    private final long[] parentLevelNodeIds;
-    private final long[] childIds;
-    private final long baseLevelId;
-    private final long[] baseNodeIds;
-
-    // locations of a node within a detectTree: root, inner, or base
-    private final boolean isRoot;
-    private final boolean isBase;
 
     // TODO: create RootNode, InnerNode, and BaseNode specializations?
     public TreeFillClusterRateLimiter(
             long permitsPerSecond,
-            long nodeId,
+            long clusterNodeId,
             long clusterSize,
             KaryTree karyTree,
             MessageSource messageSource
     ) {
-        this.clusterSize = clusterSize;
-        this.karyTree = karyTree;
-        this.messageSource = messageSource;
-
-        this.nodeId = nodeId;
-        this.levelId = karyTree.levelOfNode(nodeId);
-        this.parentId = karyTree.parentOfNode(nodeId);
-        this.parentLevelId = karyTree.levelOfNode(parentId);
-        this.parentLevelNodeIds = karyTree.nodesOfLevel(parentLevelId);
-        this.baseLevelId = karyTree.getBaseLevel();
-        this.baseNodeIds = karyTree.nodesOfLevel(this.baseLevelId);
-
-        this.isRoot = nodeId == parentId;
-        this.isBase = levelId != baseLevelId;
-
-        // TODO: have the tree return empty[] instead of IDs beyond the tree's capacity
-        this.childIds = this.isBase ? new long[]{} : karyTree.childrenOfNode(nodeId);
-
+        reconfigureClusterNode(clusterNodeId, clusterSize, karyTree);
         setRate(permitsPerSecond);
+        this.messageSource = messageSource;
+    }
+
+    private void reconfigureClusterNode(long clusterNodeId, long clusterSize, KaryTree karyTree) {
+        this.nodeConfig = new NodeConfig(karyTree, clusterNodeId, clusterSize);
     }
 
     @Override
     public boolean tryAcquire(long permits) {
-        if (!isRoot) {
-            messageSource.send(new Inform(nodeId, parentId, format("tryAcquire(%d) invoked", permits)));
-            messageSource.send(new Detect(nodeId, parentId, 0L, permits));
+        if (!nodeConfig.isRootNode) {
+            messageSource.send(new Inform(nodeConfig.clusterNodeId, nodeConfig.parentNodeId, format("tryAcquire(%d) invoked", permits)));
+            messageSource.send(new Detect(nodeConfig.clusterNodeId, nodeConfig.parentNodeId, 0L, permits));
         }
         return true;
     }
@@ -69,7 +42,6 @@ public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillM
     @Override
     public void setRate(long permitsPerSecond) {
         this.permitsPerSecond = permitsPerSecond;
-        this.rounds = TreeFillMath.rounds(karyTree, permitsPerSecond, clusterSize);
     }
 
     @Override
@@ -80,5 +52,60 @@ public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillM
     @Override
     public void receive(Detect detect) {
         System.out.println(detect);
+    }
+}
+
+
+/**
+ * Describes this node and its neighborhood within a virtual k-ary tree structure.
+ */
+class NodeConfig {
+    final KaryTree karyTree;
+    final long clusterNodeId;
+    final long clusterSize;
+
+    final long levelId;
+    final long parentNodeId;
+    final long parentLevelId;
+    final long[] parentLevelNodeIds;
+    final long[] childNodeIds;
+    final long baseLevelId;
+    final long[] baseNodeIds;
+
+    final boolean isRootNode;
+    final boolean isBaseNode;
+
+    NodeConfig(KaryTree karyTree, long clusterNodeId, long clusterSize) {
+        this.karyTree = karyTree;
+        this.clusterNodeId = clusterNodeId;
+        this.clusterSize = clusterSize;
+
+        this.levelId = karyTree.levelOfNode(clusterNodeId);
+        this.parentNodeId = karyTree.parentOfNode(clusterNodeId);
+        this.parentLevelId = karyTree.levelOfNode(parentNodeId);
+        this.parentLevelNodeIds = karyTree.nodesOfLevel(parentLevelId);
+        this.baseLevelId = karyTree.getBaseLevel();
+        this.baseNodeIds = karyTree.nodesOfLevel(this.baseLevelId);
+
+        this.isRootNode = clusterNodeId == parentNodeId;
+        this.isBaseNode = levelId != baseLevelId;
+
+        // TODO: have the tree return empty[] instead of IDs beyond the tree's capacity
+        this.childNodeIds = this.isBaseNode ? new long[]{} : karyTree.childrenOfNode(clusterNodeId);
+    }
+}
+
+class WindowConfig {
+    final NodeConfig nodeConfig;
+    final long clusterPermits;
+    final long rounds;
+//    final long[] clusterDetectPermitsPerRound;
+
+    WindowConfig(NodeConfig nodeConfig, long clusterPermits) {
+        this.nodeConfig = nodeConfig;
+        this.clusterPermits = clusterPermits;
+
+        this.rounds = TreeFillMath.rounds(clusterPermits, nodeConfig.clusterSize);
+//        this.clusterDetectPermitsPerRound = TreeFillMath.clusterDetectPermitsPerRound(clusterPermits, nodeConfig.clusterSize);
     }
 }

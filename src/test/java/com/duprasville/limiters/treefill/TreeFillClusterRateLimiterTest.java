@@ -48,11 +48,10 @@ class TreeFillClusterRateLimiterTest {
         TreeFillClusterRateLimiter treefill = new TreeFillClusterRateLimiter(permitsPerSecond, nodeId, clusterSize, karyTree, messageSource);
         boolean acquired = treefill.tryAcquire(2L);
 
-        // rounds = log_K(W/N) where,
-        //   K is the "ary" of the detect tree
+        // rounds = log_2(W/N) where,
         //   W is the number of events for the cluster to count (permits acquired)
         //   N is the number of nodes in the cluster
-        // in this case, ceil(log_5(500.0/6.0)) == 3
+        // in this case, log_2(500.0/6.0) == 6
         long permitsDetected = detectsReceived.stream().mapToLong(d -> d.permitsAcquired).sum();
         assertThat(permitsDetected, is(2L));
         assertThat(detectsReceived.size(), is(3));

@@ -32,4 +32,8 @@ public class Utils {
     public static long gcd(long a, long b) {
         return b == 0L ? a : gcd(b, a % b);
     }
+
+    public static double log_b(double b, double n) {
+        return Math.log(n) / Math.log(b);
+    }
 }
