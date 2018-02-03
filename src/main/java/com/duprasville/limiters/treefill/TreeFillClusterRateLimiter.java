@@ -6,8 +6,12 @@ import com.duprasville.limiters.util.AtomicMaxLongIncrementor;
 import com.duprasville.limiters.util.karytree.KaryTree;
 import com.google.common.annotations.VisibleForTesting;
 
+import java.lang.reflect.Array;
+import java.util.concurrent.atomic.AtomicReference;
+
 import static com.duprasville.limiters.treefill.TreeFillMath.nodePermitsToDetectPerRound;
 import static java.lang.Math.max;
+import static java.lang.Math.min;
 import static java.lang.Math.toIntExact;
 import static java.lang.String.format;
 
@@ -43,9 +47,9 @@ public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillM
     @Override
     public boolean tryAcquire(long permits) {
         boolean ret = currentWindow.tryAcquire(permits);
-        if (ret) {
-            messageSource.send(new Inform(nodeConfig.clusterNodeId, nodeConfig.parentNodeId, format("tryAcquire(%d) success", permits)));
-        }
+//        if (ret) {
+//            messageSource.send(new Inform(nodeConfig.clusterNodeId, nodeConfig.parentNodeId, format("tryAcquire(%d) success", permits)));
+//        }
         return ret;
     }
 
@@ -61,7 +65,45 @@ public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillM
 
     @Override
     public void receive(Detect detect) {
-        System.out.println(detect);
+        currentWindow.detect(detect);
+    }
+}
+
+class AtomicReferenceGrid<T> {
+    private final AtomicReference<T>[][] grid;
+    public final int xLength;
+    public final int yLength;
+
+    @SuppressWarnings("unchecked")
+    public AtomicReferenceGrid(int xdim, int ydim) {
+        this.grid = (AtomicReference<T>[][]) Array.newInstance(AtomicReference.class, xdim, ydim);
+        this.xLength = xdim;
+        this.yLength = ydim;
+        for (int x = 0; x < grid.length; x++) {
+            for (int y = 0; y < grid[x].length; y++) {
+                grid[x][y] = new AtomicReference<T>();
+            }
+        }
+    }
+
+    public AtomicReference<T> get(int x, int y) {
+        return grid[x][y];
+    }
+
+}
+
+class DetectArray {
+    final AtomicReferenceGrid<Detect> detects;
+
+    DetectArray(int rounds) {
+        this.detects = new AtomicReferenceGrid<>(2, rounds);
+    }
+
+    public boolean tryDetect(Detect detect) {
+        // remember rounds are 1-based, but the underlying grid is 0-based
+        int round = toIntExact(detect.round);
+        return detects.get(0, round).compareAndSet(null, detect) ||
+                detects.get(1, round).compareAndSet(null, detect);
     }
 }
 
@@ -72,18 +114,16 @@ class WindowState {
     final AtomicMaxLongIncrementor permitsAcquired;
     final AtomicMaxLongIncrementor pendingPermitsToSignalDetect = new AtomicMaxLongIncrementor(0L, Long.MAX_VALUE);
     final NodeConfig nodeConfig;
-
+    final DetectArray detects;
 
     public WindowState(WindowConfig windowConfig, MessageSource messageSource) {
         this.windowConfig = windowConfig;
         this.nodeConfig = windowConfig.nodeConfig;
-
-        // TODO - should a node continue to allow requests until it receives a message from the root node to close the door?
         this.permitsAcquired = new AtomicMaxLongIncrementor(0L, windowConfig.clusterPermits);
-
         // rounds start at 1 to match the paper
-        this.currentRound = new AtomicMaxLongIncrementor( 1L, windowConfig.getRounds()-1);
+        this.currentRound = new AtomicMaxLongIncrementor(1L, windowConfig.getRounds() - 1);
         this.messageSource = messageSource;
+        this.detects = new DetectArray(toIntExact(windowConfig.getRounds()));
     }
 
     public long advanceRound() {
@@ -95,14 +135,23 @@ class WindowState {
         return currentRound.get();
     }
 
+    public void detect(Detect detect) {
+//        System.out.println(format("Detect received (isBaseNode = %s) %s ", nodeConfig.isBaseNode, detect));
+        if (nodeConfig.isBaseNode) {
+            if (!detects.tryDetect(detect)) {
+                // base node is full for the round specified by the Detect message. Forward to a node in the layer above.
+                long nodeAbove = messageSource.anyAvailableNode(nodeConfig.parentLevelNodeIds);
+                messageSource.send(new Detect(nodeConfig.clusterNodeId, nodeAbove, detect.round, detect.permitsAcquired));
+            }
+        } else if (nodeConfig.isInnerNode) {
+
+        }
+    }
+
     public boolean tryAcquire(long permits) {
-        // when window is closed (due to signal from root node), return false
-        // push requested permits onto pending
-        // drain pending into a list of Detect messages
-        // send all Detect messages to base nodes sendAny(from, Set<to>, List<Detect>)
+        // #OGodMyEyes - separate acquisition from sending of detects
 
         // TODO check here for a signal from the root node that closed this window
-
         // allow acquire when
         //   1. no signal has been received at this node to close the window (TODO)
         //   2. this node's acquired permits plus the requested permits is fewer than the whole cluster's permits
@@ -115,9 +164,10 @@ class WindowState {
             long permitsToDetect = max(1L, windowConfig.getPermitsToDetectPerRound(currRound));
 
             while (pendingPermitsToSignalDetect.tryDecrement(permitsToDetect)) {
-                // TODO send the Detect messages to the base nodes, not the parent
-                messageSource.send(new Detect(nodeConfig.clusterNodeId, nodeConfig.parentNodeId, currRound, permitsToDetect));
-                currRound = advanceRound(); // causes node to independently auto-advance through rounds - may want to make this an option/strategy
+                long baseNode = messageSource.anyAvailableNode(nodeConfig.baseNodeIds);
+                messageSource.send(new Detect(nodeConfig.clusterNodeId, baseNode, currRound, permitsToDetect));
+                // causes node to independently auto-advance through rounds - may want to make this an option/strategy
+                currRound = advanceRound();
                 permitsToDetect = max(1L, windowConfig.getPermitsToDetectPerRound(currRound));
             }
             return true;
@@ -145,6 +195,7 @@ class NodeConfig {
     final long[] baseNodeIds;
 
     final boolean isRootNode;
+    final boolean isInnerNode;
     final boolean isBaseNode;
 
     NodeConfig(KaryTree karyTree, long clusterNodeId, long clusterSize) {
@@ -160,7 +211,8 @@ class NodeConfig {
         this.baseNodeIds = karyTree.nodesOfLevel(this.baseLevelId);
 
         this.isRootNode = clusterNodeId == parentNodeId;
-        this.isBaseNode = levelId != baseLevelId;
+        this.isBaseNode = levelId == baseLevelId;
+        this.isInnerNode = !this.isBaseNode && !this.isRootNode;
 
         // TODO: have the tree return empty[] instead of IDs beyond the tree's capacity
         this.childNodeIds = this.isBaseNode ? new long[]{} : karyTree.childrenOfNode(clusterNodeId);
@@ -188,9 +240,11 @@ class WindowConfig {
 }
 
 /*
+
+
 To do next
-- get this working for W <= N
-- send Detect(window, round, permits detected) to base layer (Set<nodeId> or nodeId[])
++ get this working for W <= N
++ send Detect(window, round, permits detected) to base layer (Set<nodeId> or nodeId[])
 - implement Full(window, round, permits detected) logic
 - root node signals Stop(window)
 */
