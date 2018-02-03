@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-class ClusterClusterRateLimitersTest {
+class ClusterRateLimitersTest {
     class TestTicker extends Ticker {
         long ticks;
         public long ONE_SECOND = 1_000_000_000L; // nanoseconds

@@ -9,10 +9,10 @@ class AtomicMaxLongIncrementorTest {
     @Test
     void tryIncrement() {
         long MAX = 100;
-        AtomicMaxLongIncrementor x = new AtomicMaxLongIncrementor(0, MAX);
+        AtomicMaxLongIncrementor x = new AtomicMaxLongIncrementor(0L, MAX);
         assertThat(x.get(), is (0L));
-        assertThat(x.tryIncrement(1L), is(1L));
-        assertThat(x.tryIncrement(MAX), is(-1L));
+        assertThat(x.tryIncrement(1L), is(true));
+        assertThat(x.tryIncrement(MAX), is(false));
         assertThat(x.get(), is (1L));
     }
 }

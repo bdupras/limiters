@@ -11,6 +11,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 class KaryTreeTest {
 
+    //@Test
     void things() {
         KaryTree tree = KaryTree.byHeight(5L, 5L);
         long levelId = tree.levelOfNode(5L);

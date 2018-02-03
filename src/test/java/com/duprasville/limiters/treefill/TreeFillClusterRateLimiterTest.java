@@ -3,57 +3,77 @@ package com.duprasville.limiters.treefill;
 import com.duprasville.limiters.comms.TestMessageSource;
 import com.duprasville.limiters.util.karytree.KaryTree;
 import com.google.common.collect.Lists;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Random;
+import java.util.stream.LongStream;
 
+import static java.lang.Math.toIntExact;
+import static java.lang.String.format;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 class TreeFillClusterRateLimiterTest {
+    TestMessageSource messageSource;
+    TestTreeFillMessageSink messageSink;
+    List<Detect> detectsReceived;
+    KaryTree karyTree_5x5_781 = KaryTree.byHeight(5L, 5L);
 
-    @Test
-    void tryAcquireInt() {
-        KaryTree karyTree = KaryTree.byMinCapacity(5L, 5L);
-        TestMessageSource messageSource = new TestMessageSource();
-
-        long nodeId = 3L;
-        long clusterSize = karyTree.getCapacity();
-        long permitsPerSecond = 5L;
-
-        TreeFillClusterRateLimiter treefill = new TreeFillClusterRateLimiter(permitsPerSecond, nodeId, clusterSize, karyTree, messageSource);
-
-        AtomicBoolean onSendCalled = new AtomicBoolean(false);
-        messageSource.onSend((m) -> onSendCalled.set(true));
-
-        boolean acquired = treefill.tryAcquire(2L);
-        assertThat(acquired, is(true));
-        assertThat(onSendCalled.get(), is(true));
+    @BeforeEach
+    void beforeEach() {
+        messageSink = new TestTreeFillMessageSink();
+        messageSource = new TestMessageSource();
+        messageSource.onSend(messageSink::receive);
+        detectsReceived = Lists.newArrayList();
+        messageSink.onDetect((d) -> {
+            if (!detectsReceived.add(d)) {
+                throw new RuntimeException("wtf");
+            }
+        } );
     }
 
     @Test
-    void sendsDetectWhenPermitsAcquired() {
-        KaryTree karyTree = KaryTree.byMinCapacity(5L, 5L);
-        TestTreeFillMessageSink messageSink = new TestTreeFillMessageSink();
-        TestMessageSource messageSource = new TestMessageSource();
-        messageSource.onSend(messageSink::receive);
-        List<Detect> detectsReceived = Lists.newArrayList();
-        messageSink.onDetect(detectsReceived::add);
+    void singleSingleNodeTryAcquireOnePermit() {
+        for (int i = 0; i < 10; i++) {
+            beforeEach();
 
-        long nodeId = 3L;
-        long clusterSize = karyTree.getCapacity(); // N
-        long permitsPerSecond = 500L; // W
+            int seed = new Random().nextInt();
+            Random rand = new Random(seed);
 
-        TreeFillClusterRateLimiter treefill = new TreeFillClusterRateLimiter(permitsPerSecond, nodeId, clusterSize, karyTree, messageSource);
-        boolean acquired = treefill.tryAcquire(2L);
+            long clusterSize = rand.nextInt(6_000) + 1L;
+            long clusterNodeId = (long)rand.nextInt(toIntExact(clusterSize));
+            long clusterPermits = rand.nextInt(250_000) + 1L;
+            String genspec = format("[seed:%d W:%d n:%d N:%d] ", seed, clusterPermits, clusterNodeId, clusterSize);
+            TreeFillClusterRateLimiter treefill = new TreeFillClusterRateLimiter(
+                    clusterPermits,
+                    clusterNodeId,
+                    clusterSize,
+                    karyTree_5x5_781,
+                    messageSource
+            );
+            for (int j = 0; j < clusterPermits; j++) {
+                treefill.tryAcquire(1L);
+            }
 
-        // rounds = log_2(W/N) where,
-        //   W is the number of events for the cluster to count (permits acquired)
-        //   N is the number of nodes in the cluster
-        // in this case, log_2(500.0/6.0) == 6
+            long permitsDetected = detectsReceived.stream().mapToLong(d -> d.permitsAcquired).sum();
+            assertThat(genspec, permitsDetected, is(equalTo(clusterPermits)));
+        }
+    }
+
+    @Test
+    void sendsMultipleDetectsWhenMultiplePermitsAreAcquiredAtOnce() {
+        TreeFillClusterRateLimiter treefill = new TreeFillClusterRateLimiter(
+                5000L,
+                3L,
+                karyTree_5x5_781.getCapacity(),
+                karyTree_5x5_781, messageSource
+        );
+        assertThat(treefill.tryAcquire(6L), is(true));
+        assertThat(detectsReceived.size(), is(2));
         long permitsDetected = detectsReceived.stream().mapToLong(d -> d.permitsAcquired).sum();
-        assertThat(permitsDetected, is(2L));
-        assertThat(detectsReceived.size(), is(3));
+        assertThat(permitsDetected, is(6L));
     }
 }

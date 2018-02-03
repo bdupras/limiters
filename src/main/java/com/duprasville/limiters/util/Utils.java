@@ -2,7 +2,7 @@ package com.duprasville.limiters.util;
 
 public class Utils {
     /**
-     * Calculates a spread of units over numPositions. When positions is not perfectly
+     * Calculates a spread of units over a number of positions. When positions is not perfectly
      * divisible by units, some positions receive an extra unit so that the full number
      * of units is divided amongst positions.
      *
