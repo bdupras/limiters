@@ -1,5 +1,6 @@
 package com.duprasville.limiters.util.karytree;
 
+import com.duprasville.limiters.vizualization.KaryNodeAppearance;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -30,7 +31,7 @@ class KaryTreeTest {
         System.out.println("children: " + Arrays.toString(tree.childrenOfNode(nodeId)));
         System.out.println("cousins: " + Arrays.toString(tree.nodesOfLevel(tree.levelOfNode(nodeId))));
 
-        KaryLayout layout = new KaryLayout(tree);
+        KaryNodeAppearance layout = new KaryNodeAppearance(tree);
         System.out.println(format("layout relX: %.4f", layout.relX(nodeId)));
         System.out.println(format("layout relY: %.4f", layout.relY(nodeId)));
     }

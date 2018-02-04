@@ -1,15 +1,16 @@
 package com.duprasville.limiters.util.karytree;
 
+import com.duprasville.limiters.vizualization.KaryNodeAppearance;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-class KaryLayoutTest {
+class KaryNodeAppearanceTest {
     @Test
     void treeLayout() {
         KaryTree tree = KaryTree.byHeight(2, 4);
-        KaryLayout layout = new KaryLayout(tree);
+        KaryNodeAppearance layout = new KaryNodeAppearance(tree);
 
         // Level 0
         assertThat(layout.relX(0), equalTo(1.0 / 2));

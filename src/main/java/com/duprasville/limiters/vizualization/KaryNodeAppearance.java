@@ -1,9 +1,11 @@
-package com.duprasville.limiters.util.karytree;
+package com.duprasville.limiters.vizualization;
 
-public class KaryLayout {
+import com.duprasville.limiters.util.karytree.KaryTree;
+
+public class KaryNodeAppearance {
     private final KaryTree karyTree;
 
-    public KaryLayout(KaryTree karyTree) {
+    public KaryNodeAppearance(KaryTree karyTree) {
         this.karyTree = karyTree;
     }
 

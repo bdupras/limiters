@@ -2,18 +2,20 @@ package com.duprasville.limiters.treefill;
 
 import com.duprasville.limiters.ClusterRateLimiter;
 import com.duprasville.limiters.comms.MessageSource;
+import com.duprasville.limiters.util.AtomicMap;
 import com.duprasville.limiters.util.AtomicMaxLongIncrementor;
+import com.duprasville.limiters.util.AtomicTable;
 import com.duprasville.limiters.util.karytree.KaryTree;
 import com.google.common.annotations.VisibleForTesting;
 
-import java.lang.reflect.Array;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.OptionalLong;
+import java.util.function.Consumer;
 
 import static com.duprasville.limiters.treefill.TreeFillMath.nodePermitsToDetectPerRound;
 import static java.lang.Math.max;
-import static java.lang.Math.min;
 import static java.lang.Math.toIntExact;
 import static java.lang.String.format;
+import static java.util.Arrays.stream;
 
 public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillMessageSink {
     private NodeConfig nodeConfig;
@@ -65,45 +67,63 @@ public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillM
 
     @Override
     public void receive(Detect detect) {
-        currentWindow.detect(detect);
+        currentWindow.receive(detect);
+    }
+
+    @Override
+    public void receive(Full full) {
+        currentWindow.receive(full);
     }
 }
 
-class AtomicReferenceGrid<T> {
-    private final AtomicReference<T>[][] grid;
-    public final int xLength;
-    public final int yLength;
+class DetectTable extends AtomicTable<Long, Long, Detect> {
+    private final static Long FIRST = 1L;
+    private final static Long SECOND = 2L;
 
-    @SuppressWarnings("unchecked")
-    public AtomicReferenceGrid(int xdim, int ydim) {
-        this.grid = (AtomicReference<T>[][]) Array.newInstance(AtomicReference.class, xdim, ydim);
-        this.xLength = xdim;
-        this.yLength = ydim;
-        for (int x = 0; x < grid.length; x++) {
-            for (int y = 0; y < grid[x].length; y++) {
-                grid[x][y] = new AtomicReference<T>();
-            }
+    public boolean tryPut(Detect detect) {
+        return tryPut(detect.round, FIRST, detect) || tryPut(detect.round, SECOND, detect);
+    }
+
+    public boolean isFull(long round) {
+        return hasValue(round, FIRST) && hasValue(round, SECOND);
+    }
+
+    public long permitsDetected(long round) {
+        return valuesAt(round).stream().mapToLong(d -> d.permitsAcquired).sum();
+    }
+}
+
+class ChildFullTable extends AtomicTable<Long, Long, Full> {
+    private final long[] childNodeIds;
+
+    public ChildFullTable(long[] childNodeIds) {
+        this.childNodeIds = childNodeIds;
+    }
+
+    public boolean tryAnyChildWithSpace(long round, Consumer<Long> action) {
+        OptionalLong childWithSpace = stream(childNodeIds)
+                .filter(childId -> !hasValue(round, childId))
+                .findAny();
+
+        // Java Optional is awkward.
+        if (childWithSpace.isPresent()) {
+            childWithSpace.ifPresent(action::accept);
+            return true;
+        } else {
+            return false;
         }
     }
 
-    public AtomicReference<T> get(int x, int y) {
-        return grid[x][y];
+    public boolean isFull(long round) {
+        return !stream(childNodeIds)
+                .filter(childId -> !hasValue(round, childId))
+                .findAny()
+                .isPresent();
+
     }
 
-}
-
-class DetectArray {
-    final AtomicReferenceGrid<Detect> detects;
-
-    DetectArray(int rounds) {
-        this.detects = new AtomicReferenceGrid<>(2, rounds);
-    }
-
-    public boolean tryDetect(Detect detect) {
-        // remember rounds are 1-based, but the underlying grid is 0-based
-        int round = toIntExact(detect.round);
-        return detects.get(0, round).compareAndSet(null, detect) ||
-                detects.get(1, round).compareAndSet(null, detect);
+    public long permitsFilled(long round) {
+        return valuesAt(round).stream().mapToLong(full -> full.permitsFilled).sum();
     }
 }
 
@@ -114,7 +134,9 @@ class WindowState {
     final AtomicMaxLongIncrementor permitsAcquired;
     final AtomicMaxLongIncrementor pendingPermitsToSignalDetect = new AtomicMaxLongIncrementor(0L, Long.MAX_VALUE);
     final NodeConfig nodeConfig;
-    final DetectArray detects;
+    final DetectTable roundDetectTable = new DetectTable();
+    final AtomicMap<Long, Full> roundFullMap = new AtomicMap<>();
+    final ChildFullTable childFullTable;
 
     public WindowState(WindowConfig windowConfig, MessageSource messageSource) {
         this.windowConfig = windowConfig;
@@ -123,7 +145,7 @@ class WindowState {
         // rounds start at 1 to match the paper
         this.currentRound = new AtomicMaxLongIncrementor(1L, windowConfig.getRounds() - 1);
         this.messageSource = messageSource;
-        this.detects = new DetectArray(toIntExact(windowConfig.getRounds()));
+        this.childFullTable = new ChildFullTable(nodeConfig.childNodeIds);
     }
 
     public long advanceRound() {
@@ -135,16 +157,106 @@ class WindowState {
         return currentRound.get();
     }
 
-    public void detect(Detect detect) {
-//        System.out.println(format("Detect received (isBaseNode = %s) %s ", nodeConfig.isBaseNode, detect));
-        if (nodeConfig.isBaseNode) {
-            if (!detects.tryDetect(detect)) {
-                // base node is full for the round specified by the Detect message. Forward to a node in the layer above.
-                long nodeAbove = messageSource.anyAvailableNode(nodeConfig.parentLevelNodeIds);
-                messageSource.send(new Detect(nodeConfig.clusterNodeId, nodeAbove, detect.round, detect.permitsAcquired));
-            }
+    public void receive(Detect detect) {
+        if (nodeConfig.isRootNode) {
+            forwardToChildWithSpaceOrElseAddToPermitsDetected(detect);
         } else if (nodeConfig.isInnerNode) {
+            forwardToChildWithSpaceOrElseForwardToParent(detect);
+        } else if (nodeConfig.isBaseNode) {
+            storeOrElseForwardToLevelAbove(detect);
+        }
+    }
 
+    private void forwardToChildWithSpaceOrElseAddToPermitsDetected(Detect detect) {
+        if (!tryForwardToChildWithSpace(detect)) {
+            System.out.println("TODO root's children are full - nowhere to forward: " + detect);
+        }
+    }
+
+    private void forwardToChildWithSpaceOrElseForwardToParent(Detect detect) {
+        if (!tryForwardToChildWithSpace(detect)) {
+            forward(nodeConfig.parentNodeId, detect);
+        }
+    }
+
+    private void storeOrElseForwardToLevelAbove(Detect detect) {
+        if (roundDetectTable.tryPut(detect)) {
+            ifDetectTableIsFullSendFull(detect.round);
+        } else {
+            forward(messageSource.anyAvailableNode(nodeConfig.parentLevelNodeIds), detect);
+        }
+    }
+
+    private boolean tryForwardToChildWithSpace(Detect detect) {
+        return childFullTable.tryAnyChildWithSpace(detect.round, childId -> forward(childId, detect));
+    }
+
+    private void forward(long dst, Detect detect) {
+        messageSource.send(new Detect(nodeConfig.clusterNodeId, dst, detect.round, detect.permitsAcquired));
+    }
+
+    private void ifDetectTableIsFullSendFull(long round) {
+        if (roundDetectTable.isFull(round) &&
+                roundFullMap.tryPut(round, () -> new Full(
+                        nodeConfig.clusterNodeId,
+                        nodeConfig.parentNodeId,
+                        round,
+                        roundDetectTable.permitsDetected(round)
+                ))) {
+            // base node just filled up and needs to send exactly one Full message to its parent
+            messageSource.send(roundFullMap.get(round));
+        }
+    }
+
+    public void receive(Full full) {
+        if (nodeConfig.isRootNode) {
+            storeAndCheckForEndOfRound(full);
+        } else if (nodeConfig.isInnerNode) {
+            storeOrThrowUnexpected(full);
+        } else if (nodeConfig.isBaseNode) {
+            throw new RuntimeException("wut - base nodes should not receive fulls: " + full);
+        }
+    }
+
+    private void storeAndCheckForEndOfRound(Full full) {
+        if (tryStore(full)) {
+            ifChildrenAreFullSendEndOfRound(full.round);
+        } else {
+            System.out.println(format("TODO Root node detected round %d is full, should signal end of round ", full.round));
+        }
+
+    }
+
+    private void ifChildrenAreFullSendEndOfRound(long round) {
+        if (childFullTable.isFull(round)) {
+            // TODO keep a tally and possibly carry over the overage into the next window?
+            System.out.println("TODO root node should tally permits acquired and accumulate excesses - perhaps pasing excesses to the next window reducing the next window's W by the excess amount");
+            throw new RuntimeException("TODO - just breaking here for now.");
+        }
+    }
+
+    private void storeOrThrowUnexpected(Full full) {
+        if (tryStore(full)) {
+            ifChildrenAreFullSendFull(full.round);
+        } else {
+            throw new RuntimeException("wut - I received too many full messages: " + full);
+        }
+    }
+
+    private boolean tryStore(Full full) {
+        return childFullTable.tryPut(full.round, full.src, full);
+    }
+
+    private void ifChildrenAreFullSendFull(long round) {
+        if (childFullTable.isFull(round) &&
+                roundFullMap.tryPut(round, () -> new Full(
+                        nodeConfig.clusterNodeId,
+                        nodeConfig.parentNodeId,
+                        round,
+                        childFullTable.permitsFilled(round)
+                ))) {
+            // inner node just filled up and needs to send exactly one Full message to its parent
+            messageSource.send(roundFullMap.get(round));
         }
     }
 
