@@ -16,11 +16,11 @@ public class TreeFillMath {
      * @param N number of nodes
      * @return number of rounds
      */
-    public static long rounds(long W, long N) {
+    public static int rounds(long W, long N) {
         if (W <= N) {
             return 1;
         } else {
-            return (long) ceil(log_b(2.0, (double) W / (double) N)) + 1L;
+            return (int) ceil(log_b(2.0, (double) W / (double) N)) + 1;
         }
     }
 
@@ -58,7 +58,7 @@ public class TreeFillMath {
         // - covers a corner case
         // - nodes with a fair share at element [i] equal to 2 get elements [..., i, i+1] set to [..., 1L, 1L]
 
-        int I = toIntExact(rounds(W, N));
+        int I = rounds(W, N);
         if (I < 1) {
             throw new UnsupportedOperationException("Thar be a bug here");
         } else if (1 == I) {

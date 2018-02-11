@@ -3,8 +3,6 @@ package com.duprasville.limiters.treefill;
 import com.duprasville.limiters.comms.TestMessageSource;
 import com.duprasville.limiters.util.karytree.KaryTree;
 import com.google.common.collect.Lists;
-import org.hamcrest.collection.IsCollectionWithSize;
-import org.hamcrest.core.IsCollectionContaining;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,16 +19,21 @@ import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static org.hamcrest.core.IsCollectionContaining.hasItem;
 
 class TreeFillClusterRateLimiterTest {
-    TestMessageSource messageSource;
-    TestTreeFillMessageSink messageSink;
-    List<Detect> detectsEmitted;
-    List<Full> fullsEmitted;
-    KaryTree karytree = KaryTree.byHeight(5L, 5L);
-    TreeFillClusterRateLimiter baseNode;
+    private KaryTree karytree = KaryTree.byHeight(5L, 5L);
+    private long PERMITS_PER_SECOND = 5000L;
+    private long CLUSTER_SIZE = karytree.getCapacity() - 1L;
+    private long ROUNDS = TreeFillMath.rounds(PERMITS_PER_SECOND, CLUSTER_SIZE);
+    private TestMessageSource messageSource;
+    private List<Detect> detectsEmitted;
+    private List<Full> fullsEmitted;
+    private TreeFillClusterRateLimiter rootNode;
+    private TreeFillClusterRateLimiter innerNode;
+    private TreeFillClusterRateLimiter baseNode;
+
 
     @BeforeEach
     void beforeEach() {
-        messageSink = new TestTreeFillMessageSink();
+        TestTreeFillMessageSink messageSink = new TestTreeFillMessageSink();
         messageSource = new TestMessageSource();
         messageSource.onSend(messageSink::receive);
         detectsEmitted = Lists.newArrayList();
@@ -39,15 +42,29 @@ class TreeFillClusterRateLimiterTest {
         messageSink.onFull(fullsEmitted::add);
         baseNode =
                 new TreeFillClusterRateLimiter(
-                        5000L,
-                        karytree.getCapacity()-1L,
+                        PERMITS_PER_SECOND,
+                        CLUSTER_SIZE - 1,
+                        karytree.getCapacity(),
+                        karytree,
+                        messageSource);
+        innerNode =
+                new TreeFillClusterRateLimiter(
+                        PERMITS_PER_SECOND,
+                        1L,
+                        karytree.getCapacity(),
+                        karytree,
+                        messageSource);
+        rootNode =
+                new TreeFillClusterRateLimiter(
+                        PERMITS_PER_SECOND,
+                        0l,
                         karytree.getCapacity(),
                         karytree,
                         messageSource);
     }
 
     @Test
-    void singleSingleNodeTryAcquireOnePermit() {
+    void singleSingleNodeTryAcquireOnePermitRandom() {
         for (int i = 0; i < 10; i++) {
             beforeEach();
 
@@ -114,5 +131,43 @@ class TreeFillClusterRateLimiterTest {
         ));
         assertThat(detectsEmitted, hasSize(1));
         assertThat(fullsEmitted, hasSize(1));
+    }
+
+    @Test
+    void innerNodeSendsOneFullPerRoundAfterReceivingFullsFromAllChildren() {
+        long[] children = innerNode.getNodeConfig().children;
+        long expectedPermitsFilled = 0L;
+        for (int round = 1; round <= ROUNDS; round++) {
+            for (long child : children) {
+                long permitsFilled = innerNode.getWindowConfig().nodePermitsPerRound[round] * 2;
+                expectedPermitsFilled += permitsFilled;
+                assertThat(fullsEmitted, hasSize(round - 1));
+                innerNode.receive(new Full(
+                        child,
+                        innerNode.nodeId,
+                        round,
+                        permitsFilled));
+            }
+            assertThat(fullsEmitted, hasSize(round));
+
+            // send one more than expected
+            innerNode.receive(new Full(
+                    children[0],
+                    innerNode.nodeId,
+                    round,
+                    innerNode.getWindowConfig().nodePermitsPerRound[round]));
+            assertThat(fullsEmitted, hasSize(round));
+        }
+
+        assertThat(
+                fullsEmitted.stream().mapToLong(full -> full.permitsFilled).sum(),
+                is(equalTo(expectedPermitsFilled))
+        );
+
+    }
+
+    @Test
+    void rootNodeBlort() {
+        rootNode.receive(new Full(1L, 0L, 1L, PERMITS_PER_SECOND));
     }
 }

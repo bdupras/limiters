@@ -54,4 +54,13 @@ public class AtomicMaxLongIncrementor {
         }
         return false;
     }
+
+    public long incrementAndGet() {
+        tryIncrement(1L);
+        return get();
+    }
+
+    public String toString() {
+        return Long.toString(get());
+    }
 }
