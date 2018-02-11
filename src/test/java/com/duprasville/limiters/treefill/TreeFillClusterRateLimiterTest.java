@@ -28,7 +28,7 @@ class TreeFillClusterRateLimiterTest {
     private List<Full> fullsEmitted;
     private TreeFillClusterRateLimiter rootNode;
     private TreeFillClusterRateLimiter innerNode;
-    private TreeFillClusterRateLimiter baseNode;
+    private TreeFillClusterRateLimiter leafNode;
 
 
     @BeforeEach
@@ -40,7 +40,7 @@ class TreeFillClusterRateLimiterTest {
         fullsEmitted = Lists.newArrayList();
         messageSink.onDetect(detectsEmitted::add);
         messageSink.onFull(fullsEmitted::add);
-        baseNode =
+        leafNode =
                 new TreeFillClusterRateLimiter(
                         PERMITS_PER_SECOND,
                         CLUSTER_SIZE - 1,
@@ -106,8 +106,8 @@ class TreeFillClusterRateLimiterTest {
     }
 
     @Test
-    void baseNodeFillsUpSendsFullAndForwardsDetect() {
-        baseNode.receive(new Detect(
+    void leafNodeFillsUpSendsFullAndForwardsDetect() {
+        leafNode.receive(new Detect(
                 1L,
                 karytree.getCapacity() - 1L,
                 1L,
@@ -115,7 +115,7 @@ class TreeFillClusterRateLimiterTest {
         ));
         assertThat(detectsEmitted, is(empty()));
         assertThat(fullsEmitted, is(empty()));
-        baseNode.receive(new Detect(
+        leafNode.receive(new Detect(
                 1L,
                 karytree.getCapacity() - 1L,
                 1L,
@@ -123,7 +123,7 @@ class TreeFillClusterRateLimiterTest {
         ));
         assertThat(detectsEmitted, is(empty()));
         assertThat(fullsEmitted, hasSize(1));
-        baseNode.receive(new Detect(
+        leafNode.receive(new Detect(
                 1L,
                 karytree.getCapacity() - 1L,
                 1L,

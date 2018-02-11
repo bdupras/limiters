@@ -13,7 +13,6 @@ import java.util.stream.LongStream;
 import static com.duprasville.limiters.treefill.TreeFillMath.nodePermitsToDetectPerRound;
 import static java.lang.Math.max;
 import static java.lang.Math.toIntExact;
-import static java.lang.String.format;
 
 public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillMessageSink {
     private NodeConfig nodeConfig;
@@ -138,7 +137,7 @@ class WindowState {
         long permitsToDetect = max(1L, windowConfig.getPermitsToDetectPerRound(currRound));
         while (pendingPermitsToDetect.tryDecrement(permitsToDetect)) {
             Detect detect = new Detect(nodeConfig.nodeId, nodeConfig.nodeId, currRound, permitsToDetect);
-            forward(messageSource.anyAvailableNode(nodeConfig.baseNodeIds), detect);
+            forward(messageSource.anyAvailableNode(nodeConfig.leafNodes), detect);
             currRound = nodeCurrentRound.incrementAndGet();
             permitsToDetect = max(1L, windowConfig.getPermitsToDetectPerRound(currRound));
         }
@@ -227,12 +226,12 @@ class NodeConfig {
     final long parentLevelId;
     final long[] parentLevelNodeIds;
     final long[] children;
-    final long baseLevelId;
-    final long[] baseNodeIds;
+    final long leafLevelId;
+    final long[] leafNodes;
 
     final boolean isRootNode;
     final boolean isInnerNode;
-    final boolean isBaseNode;
+    final boolean isLeafNode;
 
     NodeConfig(KaryTree karyTree, long nodeId, long clusterSize) {
         this.karyTree = karyTree;
@@ -243,15 +242,15 @@ class NodeConfig {
         this.parentNodeId = karyTree.parentOfNode(nodeId);
         this.parentLevelId = karyTree.levelOfNode(parentNodeId);
         this.parentLevelNodeIds = karyTree.nodesOfLevel(parentLevelId);
-        this.baseLevelId = karyTree.getBaseLevel();
-        this.baseNodeIds = karyTree.nodesOfLevel(this.baseLevelId);
+        this.leafLevelId = karyTree.getLeafLevel();
+        this.leafNodes = karyTree.nodesOfLevel(this.leafLevelId);
 
         this.isRootNode = nodeId == parentNodeId;
-        this.isBaseNode = levelId == baseLevelId;
-        this.isInnerNode = !this.isBaseNode && !this.isRootNode;
+        this.isLeafNode = levelId == leafLevelId;
+        this.isInnerNode = !this.isLeafNode && !this.isRootNode;
 
         // TODO: have the tree return empty[] instead of IDs beyond the tree's capacity
-        this.children = this.isBaseNode ? new long[]{} : karyTree.childrenOfNode(nodeId);
+        this.children = this.isLeafNode ? new long[]{} : karyTree.childrenOfNode(nodeId);
     }
 }
 
@@ -269,8 +268,8 @@ class WindowConfig {
         this.nodePermitsPerRound = nodePermitsToDetectPerRound(clusterPermits, nodeConfig.nodeId, nodeConfig.clusterSize);
 
         this.rounds = LongStream.range(1, nodePermitsPerRound.length).toArray(); // [1L, 2L, ...]
-        this.detectTableTemplate = nodeConfig.isBaseNode ? new DetectTable(rounds) : DetectTable.NIL;
-        this.fullTableTemplate = nodeConfig.isBaseNode ? FullTable.NIL : new FullTable(rounds, nodeConfig.children);
+        this.detectTableTemplate = nodeConfig.isLeafNode ? new DetectTable(rounds) : DetectTable.NIL;
+        this.fullTableTemplate = nodeConfig.isLeafNode ? FullTable.NIL : new FullTable(rounds, nodeConfig.children);
     }
 
     long getPermitsToDetectPerRound(long round) {
