@@ -3,6 +3,7 @@ package com.duprasville.limiters.vizualization;
 import com.duprasville.limiters.comms.Message;
 import com.duprasville.limiters.treefill.Detect;
 import com.duprasville.limiters.treefill.Full;
+import com.duprasville.limiters.treefill.WindowFull;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,6 +13,7 @@ public class MessageAppearance {
     static {
         colors.put(Detect.class, lime());
         colors.put(Full.class, orange());
+        colors.put(WindowFull.class, red());
     }
 
     public static double relColor(Message message) {

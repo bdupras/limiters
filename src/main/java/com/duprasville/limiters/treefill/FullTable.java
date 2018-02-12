@@ -29,14 +29,15 @@ public class FullTable extends MessageTable<Full>{
     }
 
     private Random randomizer = new Random();
-    public boolean tryWithEmpty(long round, Consumer<Long> consumer) {
-        List<Long> empties = getEmptyEntries(round);
-        if (empties.size() > 0) {
-            consumer.accept(empties.get(randomizer.nextInt(empties.size())));
-            return true;
-        } else {
-            return false;
+    public boolean tryWithFirstEmpty(long maxRoundInclusive, Consumer<Long> consumer) {
+        for (long round = 1L; round <= maxRoundInclusive; round++) {
+            List<Long> empties = getEmptyEntries(round);
+            if (empties.size() > 0) {
+                consumer.accept(empties.get(randomizer.nextInt(empties.size())));
+                return true;
+            }
         }
+        return false;
     }
 
     public static FullTable NIL = new FullTable(new long[]{}, new long[]{}, (a, b) -> {}) {
@@ -46,7 +47,7 @@ public class FullTable extends MessageTable<Full>{
         }
 
         @Override
-        public boolean tryWithEmpty(long round, Consumer<Long> consumer) {
+        public boolean tryWithFirstEmpty(long maxRoundInclusive, Consumer<Long> consumer) {
             return false;
         }
 

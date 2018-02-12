@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Random;
 
+import static com.duprasville.limiters.util.Utils.spread;
 import static java.lang.Math.toIntExact;
 import static java.lang.String.format;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -135,11 +136,11 @@ class TreeFillClusterRateLimiterTest {
 
     @Test
     void innerNodeSendsOneFullPerRoundAfterReceivingFullsFromAllChildren() {
-        long[] children = innerNode.getNodeConfig().children;
+        long[] children = innerNode.nodeConfig.children;
         long expectedPermitsFilled = 0L;
         for (int round = 1; round <= ROUNDS; round++) {
             for (long child : children) {
-                long permitsFilled = innerNode.getWindowConfig().nodePermitsPerRound[round] * 2;
+                long permitsFilled = innerNode.windowConfig.nodePermitsPerRound[round] * 2;
                 expectedPermitsFilled += permitsFilled;
                 assertThat(fullsEmitted, hasSize(round - 1));
                 innerNode.receive(new Full(
@@ -149,25 +150,23 @@ class TreeFillClusterRateLimiterTest {
                         permitsFilled));
             }
             assertThat(fullsEmitted, hasSize(round));
-
-            // send one more than expected
-            innerNode.receive(new Full(
-                    children[0],
-                    innerNode.nodeId,
-                    round,
-                    innerNode.getWindowConfig().nodePermitsPerRound[round]));
-            assertThat(fullsEmitted, hasSize(round));
         }
 
         assertThat(
-                fullsEmitted.stream().mapToLong(full -> full.permitsFilled).sum(),
+                fullsEmitted.stream().mapToLong(full -> full.permitsAcquired).sum(),
                 is(equalTo(expectedPermitsFilled))
         );
 
     }
 
     @Test
-    void rootNodeBlort() {
-        rootNode.receive(new Full(1L, 0L, 1L, PERMITS_PER_SECOND));
+    void rootNodeClosesWindowWhenClusterPermitsExceeded() {
+        // cheating a little here - signaling the full amount of permits in a single round
+        for (int i = 0; i < rootNode.nodeConfig.children.length; i++) {
+            long child = rootNode.nodeConfig.children[i];
+            rootNode.receive(new Full(child, rootNode.nodeId, 1L, spread(PERMITS_PER_SECOND, i, rootNode.nodeConfig.children.length)));
+        }
+        assertThat(rootNode.tryAcquire(1L), is(false));
     }
+
 }

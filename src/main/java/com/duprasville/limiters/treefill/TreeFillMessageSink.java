@@ -7,6 +7,7 @@ public interface TreeFillMessageSink extends MessageSink {
     void receive(Inform inform);
     void receive(Detect detect);
     void receive(Full full);
+    void receive(WindowFull windowFull);
 
     @Override
     default void receive(Message message) { // private in java 9

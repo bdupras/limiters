@@ -7,31 +7,20 @@ import com.duprasville.limiters.util.karytree.KaryTree;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.LongStream;
 
-import static com.duprasville.limiters.treefill.TreeFillMath.nodePermitsToDetectPerRound;
 import static java.lang.Math.max;
-import static java.lang.Math.toIntExact;
 
 public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillMessageSink {
-    private NodeConfig nodeConfig;
+    @VisibleForTesting
+    NodeConfig nodeConfig;
 
-    public NodeConfig getNodeConfig() {
-        return nodeConfig;
-    }
+    @VisibleForTesting
+    WindowConfig windowConfig;
 
-    private WindowConfig windowConfig;
-
-    public WindowConfig getWindowConfig() {
-        return windowConfig;
-    }
-
-    private WindowState currentWindow;
-
-    public WindowState getCurrentWindow() {
-        return currentWindow;
-    }
+    @VisibleForTesting
+    WindowState currentWindow;
 
     final long nodeId;
     final long clusterSize;
@@ -89,6 +78,11 @@ public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillM
     public void receive(Full full) {
         currentWindow.receive(full);
     }
+
+    @Override
+    public void receive(WindowFull windowFull) {
+        currentWindow.receive(windowFull);
+    }
 }
 
 class WindowState {
@@ -97,10 +91,12 @@ class WindowState {
     private final MessageSource messageSource;
     private final AtomicMaxLongIncrementor nodeCurrentRound;
     private final AtomicLong clusterPermitsAcquired;
+    private final AtomicBoolean clusterWindowFull = new AtomicBoolean(false);
     private final AtomicMaxLongIncrementor nodePermitsAcquired;
     private final AtomicMaxLongIncrementor pendingPermitsToDetect = new AtomicMaxLongIncrementor(0L, Long.MAX_VALUE);
     private final DetectTable detectsTable;
     private final FullTable fullsReceived;
+    ;
 
     public WindowState(WindowConfig windowConfig, MessageSource messageSource) {
         this.windowConfig = windowConfig;
@@ -117,19 +113,18 @@ class WindowState {
     }
 
     public boolean tryAcquire(long permits) {
-        // TODO check here for a signal from the root node that closed this window
         // allow acquire when
-        //   1. no signal has been received at this node to close the window (TODO)
+        //   1. no signal has been received at this node to close the window
         //   2. this node's acquired permits plus the requested permits is fewer than the whole cluster's permits
 
-        if (nodePermitsAcquired.tryIncrement(permits)) {
-            sendDetectsForPendingPermits(permits);
+        if (!clusterWindowFull.get() && nodePermitsAcquired.tryIncrement(permits)) {
+            addToPendingPermitsAndMaybeSendDetects(permits);
             return true;
         }
         return false;
     }
 
-    private void sendDetectsForPendingPermits(long permits) {
+    private void addToPendingPermitsAndMaybeSendDetects(long permits) {
         pendingPermitsToDetect.tryIncrement(permits);
         long currRound = nodeCurrentRound.get();
         // when cluster permits < nodes in the cluster, some nodes' "fair share" will be 0.
@@ -138,13 +133,15 @@ class WindowState {
         while (pendingPermitsToDetect.tryDecrement(permitsToDetect)) {
             Detect detect = new Detect(nodeConfig.nodeId, nodeConfig.nodeId, currRound, permitsToDetect);
             forward(messageSource.anyAvailableNode(nodeConfig.leafNodes), detect);
-            currRound = nodeCurrentRound.incrementAndGet();
+//          currRound = nodeCurrentRound.incrementAndGet();
+            currRound = nodeCurrentRound.get();
             permitsToDetect = max(1L, windowConfig.getPermitsToDetectPerRound(currRound));
         }
     }
 
     public void receive(Detect detect) {
-        if (!(tryForwardDown(detect)           // root & inner nodes can pass downward
+        if (!(tryAbsorbIntoCurrentRound(detect)
+                || tryForwardDown(detect)           // root & inner nodes can pass downward
                 || detectsTable.tryPut(detect) // leaf nodes can store locally
                 || tryForwardUp(detect)        // leaf & inner nodes can pass up when full
         )) {
@@ -154,13 +151,15 @@ class WindowState {
     }
 
     private void acquireClusterPermits(long permitsAcquired) {
-        if (clusterPermitsAcquired.addAndGet(permitsAcquired) >= windowConfig.clusterPermits) {
-            throw new RuntimeException("Should send EndWindow here");
+        long pa = clusterPermitsAcquired.addAndGet(permitsAcquired);
+        if (pa >= windowConfig.clusterPermits) {
+            receive(new WindowFull(nodeConfig.nodeId, nodeConfig.nodeId, clusterPermitsAcquired.get()));
         }
-
     }
 
     private void onDetectTableRoundFull(long round, List<Detect> detects) {
+        nodeCurrentRound.tryIncrement(1L);
+
         long permitsAcquired = detects.stream().mapToLong(d -> d.permitsAcquired).sum();
         messageSource.send(new Full(
                 nodeConfig.nodeId,
@@ -173,22 +172,57 @@ class WindowState {
     public void receive(Full full) {
         if (!fullsReceived.tryPut(full)) tryForwardUp(full);
         if (nodeConfig.isRootNode) {
-            acquireClusterPermits(full.permitsFilled);
+            acquireClusterPermits(full.permitsAcquired);
         }
     }
 
     private void onFullTableRoundFull(long round, List<Full> fulls) {
-        long permitsFilled = fulls.stream().mapToLong(f -> f.permitsFilled).sum();
-        messageSource.send(new Full(
-                nodeConfig.nodeId,
-                nodeConfig.parentNodeId,
-                round,
-                permitsFilled
-        ));
+        nodeCurrentRound.tryIncrement(1L);
+
+        if (!nodeConfig.isRootNode) {
+            long permitsFilled = fulls.stream().mapToLong(f -> f.permitsAcquired).sum();
+            tryForwardUp(new Full(
+                    nodeConfig.nodeId,
+                    nodeConfig.parentNodeId,
+                    round,
+                    permitsFilled
+            ));
+        }
+    }
+
+    public void receive(WindowFull windowFull) {
+        if (clusterWindowFull.compareAndSet(false, true)) {
+            for (long child : nodeConfig.children) {
+                forward(child, windowFull);
+            }
+        }
+    }
+
+    private void forward(long dst, Detect detect) {
+        messageSource.send(new Detect(nodeConfig.nodeId, dst, detect.round, detect.permitsAcquired));
+    }
+
+    private void forward(long dst, Full full) {
+        messageSource.send(new Full(nodeConfig.nodeId, dst, full.round, full.permitsAcquired));
+    }
+
+    private void forward(long dst, WindowFull windowFull) {
+        messageSource.send(new WindowFull(nodeConfig.nodeId, dst, windowFull.permitsAcquired));
+
+    }
+
+    private boolean tryAbsorbIntoCurrentRound(Detect detect) {
+        if (detect.round > nodeCurrentRound.get()) {
+            addToPendingPermitsAndMaybeSendDetects(detect.permitsAcquired);
+            return true;
+        }
+        return false;
     }
 
     private boolean tryForwardDown(Detect detect) {
-        return fullsReceived.tryWithEmpty(detect.round, child -> forward(child, detect));
+        return fullsReceived.tryWithFirstEmpty(detect.round, child -> {
+            forward(child, detect);
+        });
     }
 
     private boolean tryForwardUp(Detect detect) {
@@ -199,95 +233,28 @@ class WindowState {
 
     private boolean tryForwardUp(Full full) {
         if (nodeConfig.isRootNode) return false;
-        forward(messageSource.anyAvailableNode(nodeConfig.parentLevelNodeIds), full);
+        forward(nodeConfig.parentNodeId, full);
         return true;
     }
-
-    private void forward(long dst, Detect detect) {
-        messageSource.send(new Detect(nodeConfig.nodeId, dst, detect.round, detect.permitsAcquired));
-    }
-
-    private void forward(long dst, Full full) {
-        messageSource.send(new Detect(nodeConfig.nodeId, dst, full.round, full.permitsFilled));
-    }
 }
 
-
-/**
- * Describes this node and its neighborhood within a virtual k-ary tree structure.
- */
-class NodeConfig {
-    final KaryTree karyTree;
-    final long nodeId;
-    final long clusterSize;
-
-    final long levelId;
-    final long parentNodeId;
-    final long parentLevelId;
-    final long[] parentLevelNodeIds;
-    final long[] children;
-    final long leafLevelId;
-    final long[] leafNodes;
-
-    final boolean isRootNode;
-    final boolean isInnerNode;
-    final boolean isLeafNode;
-
-    NodeConfig(KaryTree karyTree, long nodeId, long clusterSize) {
-        this.karyTree = karyTree;
-        this.nodeId = nodeId;
-        this.clusterSize = clusterSize;
-
-        this.levelId = karyTree.levelOfNode(nodeId);
-        this.parentNodeId = karyTree.parentOfNode(nodeId);
-        this.parentLevelId = karyTree.levelOfNode(parentNodeId);
-        this.parentLevelNodeIds = karyTree.nodesOfLevel(parentLevelId);
-        this.leafLevelId = karyTree.getLeafLevel();
-        this.leafNodes = karyTree.nodesOfLevel(this.leafLevelId);
-
-        this.isRootNode = nodeId == parentNodeId;
-        this.isLeafNode = levelId == leafLevelId;
-        this.isInnerNode = !this.isLeafNode && !this.isRootNode;
-
-        // TODO: have the tree return empty[] instead of IDs beyond the tree's capacity
-        this.children = this.isLeafNode ? new long[]{} : karyTree.childrenOfNode(nodeId);
-    }
-}
-
-class WindowConfig {
-    final NodeConfig nodeConfig;
-    final long[] rounds;
-    final long[] nodePermitsPerRound;
-    final long clusterPermits;
-    final DetectTable detectTableTemplate;
-    public FullTable fullTableTemplate;
-
-    WindowConfig(NodeConfig nodeConfig, long clusterPermits) {
-        this.nodeConfig = nodeConfig;
-        this.clusterPermits = clusterPermits;
-        this.nodePermitsPerRound = nodePermitsToDetectPerRound(clusterPermits, nodeConfig.nodeId, nodeConfig.clusterSize);
-
-        this.rounds = LongStream.range(1, nodePermitsPerRound.length).toArray(); // [1L, 2L, ...]
-        this.detectTableTemplate = nodeConfig.isLeafNode ? new DetectTable(rounds) : DetectTable.NIL;
-        this.fullTableTemplate = nodeConfig.isLeafNode ? FullTable.NIL : new FullTable(rounds, nodeConfig.children);
-    }
-
-    long getPermitsToDetectPerRound(long round) {
-        return nodePermitsPerRound[toIntExact(round)];
-    }
-}
 
 /*
-To do next
-+ get this working for W <= N
-+ send Detect(window, round, permits detected) to base layer (Set<nodeId> or nodeId[])
-+ implement Full(window, round, permits detected) logic
-- root node signals Stop(window)
-*/
+TODO next
+---------
+- calculate pre-fills (so last rounds don't allow too many, and for W <= N)
+- window advance
+- back-pressure?
 
-/*
+Simulation features
+-------------------
+- metrics: MsgLoad, MaxRecv, MaxSend
+- Rejects vs Accepts
+- better tree layout (wrap bottom tier?)
+
+
 Refactorings
-So many arrays - it's ok to use List<> and Set<>, Brian
-Make DetectTree/DetectTreeNode separate & distinct from rate limiting logic
-create RootNode, InnerNode, and BaseNode specializations? - definitely!
+------------
+- Make DetectTree/DetectTreeNode separate & distinct from rate limiting logic
+- Make tryWithFirstEmpty efficient
 */

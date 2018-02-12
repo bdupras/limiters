@@ -37,7 +37,6 @@ public class AtomicTable<V> {
         return getRows() > 0 ? table[0].length : 0;
     }
 
-    @SuppressWarnings("unchecked")
     public List<V> getRow(int row) {
         return Arrays.stream(table[row]).map(AtomicReference::get).collect(toList());
     }

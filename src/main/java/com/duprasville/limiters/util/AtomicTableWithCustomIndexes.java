@@ -1,13 +1,10 @@
 package com.duprasville.limiters.util;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
 
 public class AtomicTableWithCustomIndexes<V> extends AtomicTable<V> {
     private final long[] rows;
@@ -36,15 +33,18 @@ public class AtomicTableWithCustomIndexes<V> extends AtomicTable<V> {
     }
 
     public Map<Long, V> getRowMap(long row) {
-        return IntStream.range(0, cols.length).boxed()
-                .collect(toMap(i -> cols[i], i -> get(row, cols[i])));
+        HashMap<Long, V> ret = new HashMap<>(cols.length);
+        for (long c : cols) {
+            ret.put(c, get(row, c));
+        }
+        return ret;
     }
 
     public List<Long> getEmptyEntries(long row) {
         return getRowMap(row)
                 .entrySet()
                 .stream()
-                .filter(e -> e.getValue() != emptyValue)
+                .filter(e -> e.getValue() == emptyValue)
                 .map(Map.Entry::getKey)
                 .collect(toList());
     }
@@ -78,7 +78,8 @@ public class AtomicTableWithCustomIndexes<V> extends AtomicTable<V> {
 
     private int getSuperIndex(long[] idx, long i) {
         int ret = Arrays.binarySearch(idx, i);
-        if (ret < 0) throw new ArrayIndexOutOfBoundsException();
+        if (ret < 0) 
+        		throw new ArrayIndexOutOfBoundsException();
         return ret;
     }
 }

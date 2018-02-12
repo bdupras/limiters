@@ -14,7 +14,7 @@ public class Inform extends BaseTreeFillMessage {
 
     @Override
     public String toString() {
-        return "Inform{" +
+        return this.getClass().getSimpleName() + "{" +
                 "src=" + src +
                 ", dst=" + dst +
                 ", msg='" + msg + '\'' +
