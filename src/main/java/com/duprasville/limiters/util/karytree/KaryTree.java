@@ -23,6 +23,8 @@ package com.duprasville.limiters.util.karytree;
  * l=3  13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39
  */
 
+import static java.lang.Math.max;
+
 public class KaryTree {
     private final long ary;
     private final long height;
@@ -160,5 +162,9 @@ public class KaryTree {
 
     private static long log_b(long base, long n) {
         return (long) (Math.log(n) / Math.log(base));
+    }
+
+    public long siblingIndex(long nodeId) {
+        return max(0L, nodeId - 1L) % ary;
     }
 }

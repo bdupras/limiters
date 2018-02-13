@@ -50,7 +50,6 @@ public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillM
 
     @VisibleForTesting
     void advanceWindow() {
-        // TODO: carry over overages from old window to new?
         this.currentWindow = new WindowState(windowConfig, messageSource);
     }
 
@@ -109,7 +108,6 @@ class WindowState {
         // rounds start at 1 to match the paper
         this.nodeCurrentRound = new AtomicMaxLongIncrementor(1L, windowConfig.rounds.length);
         this.messageSource = messageSource;
-        // TODO calculate pre-fills
     }
 
     public boolean tryAcquire(long permits) {
@@ -118,42 +116,41 @@ class WindowState {
         //   2. this node's acquired permits plus the requested permits is fewer than the whole cluster's permits
 
         if (!clusterWindowFull.get() && nodePermitsAcquired.tryIncrement(permits)) {
-            addToPendingPermitsAndMaybeSendDetects(permits);
+            addToPendingPermitsAndSendDetectsIfNeeded(permits);
             return true;
         }
         return false;
     }
 
-    private void addToPendingPermitsAndMaybeSendDetects(long permits) {
-        pendingPermitsToDetect.tryIncrement(permits);
+    private void addToPendingPermitsAndSendDetectsIfNeeded(long permitsAcquired) {
+        pendingPermitsToDetect.tryIncrement(permitsAcquired);
         long currRound = nodeCurrentRound.get();
-        // when cluster permits < nodes in the cluster, some nodes' "fair share" will be 0.
-        // if this is such a node, presume that we should send one Detect for every permit issued.
+        // If permits to detect this round is 0, send one Detect for every permit acquired. This happens later
+        // rounds when the cluster-wide permits to detect for the round is less than number of cluster nodes.
         long permitsToDetect = max(1L, windowConfig.getPermitsToDetectPerRound(currRound));
         while (pendingPermitsToDetect.tryDecrement(permitsToDetect)) {
             Detect detect = new Detect(nodeConfig.nodeId, nodeConfig.nodeId, currRound, permitsToDetect);
             forward(messageSource.anyAvailableNode(nodeConfig.leafNodes), detect);
-//          currRound = nodeCurrentRound.incrementAndGet();
             currRound = nodeCurrentRound.get();
             permitsToDetect = max(1L, windowConfig.getPermitsToDetectPerRound(currRound));
         }
     }
 
-    public void receive(Detect detect) {
-        if (!(tryAbsorbIntoCurrentRound(detect)
-                || tryForwardDown(detect)           // root & inner nodes can pass downward
-                || detectsTable.tryPut(detect) // leaf nodes can store locally
-                || tryForwardUp(detect)        // leaf & inner nodes can pass up when full
-        )) {
-            // root node received a Detect and all its children have reported Full
-            acquireClusterPermits(detect.permitsAcquired);
+    private void addToClusterPermitsAcquiredAndCloseWindowIfNeeded(long permitsAcquired) {
+        long pa = clusterPermitsAcquired.addAndGet(permitsAcquired);
+        if (pa >= windowConfig.clusterPermits && !clusterWindowFull.get()) {
+            receive(new WindowFull(nodeConfig.nodeId, nodeConfig.nodeId, clusterPermitsAcquired.get()));
         }
     }
 
-    private void acquireClusterPermits(long permitsAcquired) {
-        long pa = clusterPermitsAcquired.addAndGet(permitsAcquired);
-        if (pa >= windowConfig.clusterPermits) {
-            receive(new WindowFull(nodeConfig.nodeId, nodeConfig.nodeId, clusterPermitsAcquired.get()));
+    public void receive(Detect detect) {
+        if (!(tryAbsorbIntoCurrentRound(detect) // any node can absorb detected permits
+                || tryForwardDown(detect)       // root & inner nodes can pass downward
+                || detectsTable.tryPut(detect)  // leaf nodes can store locally
+                || tryForwardUp(detect)         // leaf & inner nodes can pass up when full
+        )) {
+            // root node received a Detect and all its children have reported Full
+            addToClusterPermitsAcquiredAndCloseWindowIfNeeded(detect.permitsAcquired);
         }
     }
 
@@ -172,7 +169,7 @@ class WindowState {
     public void receive(Full full) {
         if (!fullsReceived.tryPut(full)) tryForwardUp(full);
         if (nodeConfig.isRootNode) {
-            acquireClusterPermits(full.permitsAcquired);
+            addToClusterPermitsAcquiredAndCloseWindowIfNeeded(full.permitsAcquired);
         }
     }
 
@@ -213,7 +210,7 @@ class WindowState {
 
     private boolean tryAbsorbIntoCurrentRound(Detect detect) {
         if (detect.round > nodeCurrentRound.get()) {
-            addToPendingPermitsAndMaybeSendDetects(detect.permitsAcquired);
+            addToPendingPermitsAndSendDetectsIfNeeded(detect.permitsAcquired);
             return true;
         }
         return false;
@@ -242,15 +239,18 @@ class WindowState {
 /*
 TODO next
 ---------
-- calculate pre-fills (so last rounds don't allow too many, and for W <= N)
+- pre-fills (so last rounds don't allow too many, and for W <= N)
 - window advance
 - back-pressure?
+- straggler bug
+- carry over overages from old window to new?
+
 
 Simulation features
 -------------------
 - metrics: MsgLoad, MaxRecv, MaxSend
 - Rejects vs Accepts
-- better tree layout (wrap bottom tier?)
+- add centralized impl (memcached sim)
 
 
 Refactorings
