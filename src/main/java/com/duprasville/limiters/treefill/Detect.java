@@ -4,8 +4,8 @@ public class Detect extends BaseTreeFillMessage {
     final long round;
     final long permitsAcquired;
 
-    Detect(long src, long dst, long round, long permitsAcquired) {
-        super(src, dst);
+    Detect(long src, long dst, long window, long round, long permitsAcquired) {
+        super(src, dst, window);
         this.round = round;
         this.permitsAcquired = permitsAcquired;
     }

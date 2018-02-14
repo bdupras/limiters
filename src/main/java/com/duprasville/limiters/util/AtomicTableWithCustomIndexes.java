@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 public class AtomicTableWithCustomIndexes<V> extends AtomicTable<V> {
     private final long[] rows;
@@ -38,6 +39,14 @@ public class AtomicTableWithCustomIndexes<V> extends AtomicTable<V> {
             ret.put(c, get(row, c));
         }
         return ret;
+    }
+
+    public Map<Long, V> getEntries(long row) {
+        return getRowMap(row)
+                .entrySet()
+                .stream()
+                .filter(e -> e.getValue() != emptyValue)
+                .collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     public List<Long> getEmptyEntries(long row) {

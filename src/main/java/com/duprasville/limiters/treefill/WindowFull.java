@@ -3,8 +3,8 @@ package com.duprasville.limiters.treefill;
 public class WindowFull extends BaseTreeFillMessage {
     final long permitsAcquired;
 
-    WindowFull(long src, long dst, long permitsAcquired) {
-        super(src, dst);
+    WindowFull(long src, long dst, long window, long permitsAcquired) {
+        super(src, dst, window);
         this.permitsAcquired = permitsAcquired;
     }
 

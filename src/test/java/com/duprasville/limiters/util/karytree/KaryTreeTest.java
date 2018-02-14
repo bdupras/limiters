@@ -32,8 +32,10 @@ class KaryTreeTest {
         System.out.println("cousins: " + Arrays.toString(tree.nodesOfLevel(tree.levelOfNode(nodeId))));
 
         KaryNodeAppearance layout = new KaryNodeAppearance(tree);
-        System.out.println(format("layout relX: %.4f", layout.relX(nodeId)));
-        System.out.println(format("layout relY: %.4f", layout.relY(nodeId)));
+        double[] relCoord = layout.relXY(nodeId);
+        System.out.println(format(
+                "layout: start (%.4f, %.4f), heading (%.4f), dist (%.4f)",
+                relCoord[0], relCoord[1], relCoord[2], relCoord[3]));
     }
 
     @Test

@@ -11,7 +11,7 @@ class FullTableTest {
     void nilTable() {
         assertThat(FullTable.NIL.get(1, 1), is(nullValue()));
         assertThat(FullTable.NIL.get(0L, 0L), is(nullValue()));
-        assertThat(FullTable.NIL.tryPut(new Full(1L, 2L, 3L, 42L)), is(false));
+        assertThat(FullTable.NIL.tryPut(new Full(1L, 2L, 0L,3L, 42L)), is(false));
     }
 
 }

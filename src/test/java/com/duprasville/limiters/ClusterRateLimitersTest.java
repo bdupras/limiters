@@ -1,33 +1,12 @@
 package com.duprasville.limiters;
 
-import com.google.common.base.Ticker;
+import com.duprasville.limiters.testutil.TestTicker;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 class ClusterRateLimitersTest {
-    class TestTicker extends Ticker {
-        long ticks;
-        public long ONE_SECOND = 1_000_000_000L; // nanoseconds
-
-        public TestTicker(long ticks) {
-            this.ticks = ticks;
-        }
-
-        public long advanceSecs(double seconds) {
-            return advance((long) (seconds * ONE_SECOND));
-        }
-
-        public long advance(long nanos) {
-            return this.ticks += nanos;
-        }
-
-        @Override
-        public long read() {
-            return this.ticks;
-        }
-    }
 
     @Test
     void unlimited() {

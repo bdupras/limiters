@@ -2,8 +2,8 @@ package com.duprasville.limiters.treefill;
 
 public class Inform extends BaseTreeFillMessage {
     final String msg;
-    Inform(long src, long dst, String msg) {
-        super(src, dst);
+    Inform(long src, long dst, long window, String msg) {
+        super(src, dst, window);
         this.msg = msg;
     }
 
