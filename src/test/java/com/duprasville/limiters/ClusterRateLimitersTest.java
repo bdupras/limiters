@@ -24,7 +24,7 @@ class ClusterRateLimitersTest {
     void simple() {
         // Guava's limiter has some confusing math that giveth
         // up front and taketh away on the back end
-        TestTicker t = new TestTicker(0L);
+        TestTicker t = new TestTicker();
         ClusterRateLimiter simple = ClusterRateLimiters.createPerClusterShard(1L, 1L, 1L, t);
         t.advanceSecs(10.0d);
         assertThat(simple.tryAcquire(1), is(true));

@@ -13,20 +13,21 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static java.lang.Math.max;
+import static java.lang.String.format;
 
 class WindowState {
     final long windowId;
-    private final NodeConfig nodeConfig;
-    private final WindowConfig windowConfig;
-    private final MessageSource messageSource;
-    private final AtomicMaxLongIncrementor nodeCurrentRound;
-    private final AtomicLong clusterPermitsAcquired;
-    private final AtomicBoolean clusterWindowFull = new AtomicBoolean(false);
-    private final AtomicMaxLongIncrementor nodePermitsAcquired;
-    private final AtomicMaxLongIncrementor pendingPermitsToDetect = new AtomicMaxLongIncrementor(0L, Long.MAX_VALUE);
-    private final DetectTable detectsTable;
-    private final FullTable fullsReceived;
-    private final ConcurrentHashMap<Long, Full> fullsSent = new ConcurrentHashMap<>();
+    final NodeConfig nodeConfig;
+    final WindowConfig windowConfig;
+    final MessageSource messageSource;
+    final AtomicMaxLongIncrementor nodeCurrentRound;
+    final AtomicLong clusterPermitsAcquired;
+    final AtomicBoolean clusterWindowFull = new AtomicBoolean(false);
+    final AtomicMaxLongIncrementor nodePermitsAcquired;
+    final AtomicMaxLongIncrementor pendingPermitsToDetect = new AtomicMaxLongIncrementor(0L, Long.MAX_VALUE);
+    final DetectTable detectsTable;
+    final FullTable fullsReceived;
+    public final ConcurrentHashMap<Long, Full> fullsSent = new ConcurrentHashMap<>();
 
     public WindowState(long windowId, WindowConfig windowConfig, MessageSource messageSource) {
         this.windowId = windowId;
@@ -61,7 +62,9 @@ class WindowState {
         long permitsToDetect = max(1L, windowConfig.getPermitsToDetectPerRound(currRound));
         while (pendingPermitsToDetect.tryDecrement(permitsToDetect)) {
             Detect detect = new Detect(nodeConfig.nodeId, nodeConfig.nodeId, windowId, currRound, permitsToDetect);
-            forward(messageSource.anyAvailableNode(nodeConfig.leafNodes), detect);
+            if (!tryStoreLocally(detect)) {
+                forward(messageSource.anyAvailableNode(nodeConfig.leafNodes), detect);
+            }
             currRound = nodeCurrentRound.get();
             permitsToDetect = max(1L, windowConfig.getPermitsToDetectPerRound(currRound));
         }
@@ -70,7 +73,8 @@ class WindowState {
     private void addToClusterPermitsAcquiredAndCloseWindowIfNeeded(long permitsAcquired) {
         long pa = clusterPermitsAcquired.addAndGet(permitsAcquired);
         if (pa >= windowConfig.clusterPermits && !clusterWindowFull.get()) {
-            receive(new WindowFull(nodeConfig.nodeId, nodeConfig.nodeId, windowId, clusterPermitsAcquired.get()));
+            WindowFull windowFull = new WindowFull(nodeConfig.nodeId, nodeConfig.nodeId, windowId, clusterPermitsAcquired.get());
+            receive(windowFull);
         }
     }
 
@@ -81,6 +85,7 @@ class WindowState {
                 || tryForwardUp(detect)         // leaf & inner nodes can pass Detects up when full
         )) {
             // root node received a Detect and all its children have reported Full
+            System.out.println(format("%d %d %d %d %s", detect.window, detect.round, detect.src, detect.permitsAcquired, detect));
             addToClusterPermitsAcquiredAndCloseWindowIfNeeded(detect.permitsAcquired);
         }
     }
@@ -116,11 +121,17 @@ class WindowState {
     }
 
     public void receive(Full full) {
-        if (!fullsReceived.tryPut(full)) tryForwardUp(full);
-        if (nodeConfig.isRootNode) {
-            addToClusterPermitsAcquiredAndCloseWindowIfNeeded(full.permitsAcquired);
+        if (fullsReceived.tryPut(full)) {
+            if (nodeConfig.isRootNode) {
+                addToClusterPermitsAcquiredAndCloseWindowIfNeeded(full.permitsAcquired);
+//                System.out.println(format("%d %d %d %d %s", full.window, full.round, full.src, full.permitsAcquired, full));
+//                System.out.println(format("%d %d %d %d %s", full.window, full.round, full.src, full.permitsAcquired, full));
+            }
+        } else {
+            tryForwardUp(full);
         }
     }
+
     private void onFullTableRoundFull(long round, List<Full> fulls) {
         nodeCurrentRound.tryIncrement(1L);
 
@@ -151,7 +162,7 @@ class WindowState {
     }
 
     private boolean tryAbsorbIntoCurrentRound(Detect detect) {
-        if (detect.round <= nodeCurrentRound.get()) return false;
+        if (detect.window == windowId && detect.round <= nodeCurrentRound.get()) return false;
         addToPendingPermitsAndSendDetectsIfNeeded(detect.permitsAcquired);
         return true;
     }

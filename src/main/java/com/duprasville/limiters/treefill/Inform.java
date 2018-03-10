@@ -1,7 +1,7 @@
 package com.duprasville.limiters.treefill;
 
 public class Inform extends BaseTreeFillMessage {
-    final String msg;
+    public final String msg;
     Inform(long src, long dst, long window, String msg) {
         super(src, dst, window);
         this.msg = msg;
@@ -17,6 +17,7 @@ public class Inform extends BaseTreeFillMessage {
         return this.getClass().getSimpleName() + "{" +
                 "src=" + src +
                 ", dst=" + dst +
+                ", window=" + window +
                 ", msg='" + msg + '\'' +
                 '}';
     }

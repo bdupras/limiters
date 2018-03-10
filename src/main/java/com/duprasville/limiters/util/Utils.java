@@ -1,12 +1,5 @@
 package com.duprasville.limiters.util;
 
-//import java.util.List;
-//import java.util.concurrent.atomic.AtomicLong;
-//import java.util.stream.LongStream;
-//
-//import static java.lang.Math.max;
-//import static java.util.stream.Collectors.toList;
-
 public class Utils {
     /**
      * Calculates a spread of units over a number of positions. When positions is not perfectly
@@ -43,19 +36,4 @@ public class Utils {
     public static double log_b(double b, double n) {
         return Math.log(n) / Math.log(b);
     }
-
-//    public static List<Long> asBoxedList(long[] longs) {
-//        return LongStream.of(longs).boxed().collect(toList());
-//    }
-//
-//    public static List<Long> asThresholds(long[] detects) {
-//        AtomicLong sum = new AtomicLong(0L);
-//        return LongStream.of(detects)
-//                .boxed()
-//                .skip(1L)
-////                .sorted(naturalOrder())
-//                .map(l -> sum.addAndGet(max(1L, l)))
-////                .sorted(reverseOrder())
-//                .collect(toList());
-//    }
 }

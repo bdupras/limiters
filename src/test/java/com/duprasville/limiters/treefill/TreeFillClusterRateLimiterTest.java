@@ -3,7 +3,6 @@ package com.duprasville.limiters.treefill;
 import com.duprasville.limiters.comms.TestMessageSource;
 import com.duprasville.limiters.testutil.TestTicker;
 import com.duprasville.limiters.util.karytree.KaryTree;
-import com.google.common.base.Ticker;
 import com.google.common.collect.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -35,13 +34,14 @@ class TreeFillClusterRateLimiterTest {
     private TreeFillClusterRateLimiter rootNode;
     private TreeFillClusterRateLimiter innerNode;
     private TreeFillClusterRateLimiter leafNode;
-    private TestTicker ticker = new TestTicker(0L);
+    private TestTicker ticker = new TestTicker();
     private TestTreeFillMessageSink messageSink;
+    private Random random = new Random(0xDEADBEEF);
 
     @BeforeEach
     void beforeEach() {
         messageSink = new TestTreeFillMessageSink();
-        messageSource = new TestMessageSource();
+        messageSource = new TestMessageSource(random);
         messageSource.onSend(messageSink::receive);
         detectsEmitted = Lists.newArrayList();
         fullsEmitted = new ConcurrentHashMap<>();
@@ -53,21 +53,27 @@ class TreeFillClusterRateLimiterTest {
                         CLUSTER_SIZE - 1,
                         karytree.getCapacity(),
                         karytree,
-                        messageSource, ticker);
+                        messageSource,
+                        ticker,
+                        new Random(random.nextLong()));
         innerNode =
                 new TreeFillClusterRateLimiter(
                         PERMITS_PER_SECOND,
                         1L,
                         karytree.getCapacity(),
                         karytree,
-                        messageSource, ticker);
+                        messageSource,
+                        ticker,
+                        new Random(random.nextLong()));
         rootNode =
                 new TreeFillClusterRateLimiter(
                         PERMITS_PER_SECOND,
                         0L,
                         karytree.getCapacity(),
                         karytree,
-                        messageSource, ticker);
+                        messageSource,
+                        ticker,
+                        new Random(random.nextLong()));
     }
 
     @Disabled("This test is no longer valid due to the behavior that nodes don't advance rounds until they " +
@@ -92,7 +98,8 @@ class TreeFillClusterRateLimiterTest {
                     clusterSize,
                     karytree,
                     messageSource,
-                    ticker);
+                    ticker,
+                    new Random(random.nextLong()));
             for (int j = 0; j < clusterPermits; j++) {
                 treefill.tryAcquire(1L);
             }
@@ -120,7 +127,8 @@ class TreeFillClusterRateLimiterTest {
                 clusterSize,
                 karytree,
                 messageSource,
-                ticker);
+                ticker,
+                new Random(random.nextLong()));
 
         for (int j = 0; j < clusterPermits; j++) {
             treefill.tryAcquire(1L);
@@ -140,8 +148,10 @@ class TreeFillClusterRateLimiterTest {
                 5000L,
                 3L,
                 karytree.getCapacity(),
-                karytree, messageSource,
-                ticker);
+                karytree,
+                messageSource,
+                ticker,
+                new Random(random.nextLong()));
         assertThat(treefill.tryAcquire(6L), is(true));
         assertThat(detectsEmitted.size(), is(2));
         long permitsDetected = detectsEmitted.stream().mapToLong(d -> d.permitsAcquired).sum();

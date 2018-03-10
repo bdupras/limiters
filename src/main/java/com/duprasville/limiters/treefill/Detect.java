@@ -1,8 +1,8 @@
 package com.duprasville.limiters.treefill;
 
 public class Detect extends BaseTreeFillMessage {
-    final long round;
-    final long permitsAcquired;
+    public final long round;
+    public final long permitsAcquired;
 
     Detect(long src, long dst, long window, long round, long permitsAcquired) {
         super(src, dst, window);
@@ -20,6 +20,7 @@ public class Detect extends BaseTreeFillMessage {
         return this.getClass().getSimpleName() + "{" +
                 "src=" + src +
                 ", dst=" + dst +
+                ", window=" + window +
                 ", round=" + round +
                 ", permitsAcquired=" + permitsAcquired +
                 '}';

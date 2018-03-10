@@ -13,6 +13,7 @@ import static java.util.Arrays.stream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 class TreeFillMathTest {
     @Test
@@ -23,14 +24,21 @@ class TreeFillMathTest {
         for (int i = 0; i < 50; i++) {
             long clusterSize = rand.nextInt(6_000) + 1L;
             long clusterPermits = rand.nextInt(250_000) + 1L;
-            long[] clusterRemainingPerRound = clusterPermitsToDetectPerRound(clusterPermits, clusterSize);
+            long[] cppr = clusterPermitsToDetectPerRound(clusterPermits, clusterSize);
 
-            assertThat(clusterRemainingPerRound[0], is(equalTo(clusterPermits)));
+            assertThat(cppr[0], is(equalTo(clusterPermits)));
+
+            long nextToLastRound = cppr[cppr.length - 2];
+            long lastRound = cppr[cppr.length - 1];
+            assertThat(nextToLastRound, is(lessThanOrEqualTo(clusterSize)));
+            assertThat(nextToLastRound, is(lessThanOrEqualTo(clusterSize)));
+            assertThat(lastRound, is(lessThanOrEqualTo(nextToLastRound)));
+            assertThat(lastRound, is(lessThanOrEqualTo(clusterSize)));
 
             assertThat(
                     format("[seed:%d W:%d N:%d, when permits > cluster size, head element == sum of tail elements. ", seed, clusterPermits, clusterSize),
-                    stream(clusterRemainingPerRound).skip(1).sum(),
-                    is(equalTo(clusterRemainingPerRound[0]))
+                    stream(cppr).skip(1).sum(),
+                    is(equalTo(cppr[0]))
             );
 
             long[][] allNodesRemainingPerRound = new long[toIntExact(clusterSize)][];
@@ -47,7 +55,7 @@ class TreeFillMathTest {
             assertThat(
                     format("[seed:%d W:%d N:%d, head element == sum of node head elements. ", seed, clusterPermits, clusterSize),
                     sumOfHeads,
-                    is(equalTo(clusterRemainingPerRound[0]))
+                    is(equalTo(cppr[0]))
             );
 
             long sumOfTails = 0L;
@@ -68,7 +76,7 @@ class TreeFillMathTest {
             assertThat(
                     format("[seed:%d W:%d N:%d, head element == sum of all node tail elements. ", seed, clusterPermits, clusterSize),
                     sumOfTails,
-                    is(equalTo(clusterRemainingPerRound[0]))
+                    is(equalTo(cppr[0]))
             );
         }
     }

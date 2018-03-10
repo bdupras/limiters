@@ -5,12 +5,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
-public class DetectTable extends MessageTable<Detect> {
-    private final static long FIRST = 1L;
-    private final static long SECOND = 2L;
+import static java.util.stream.LongStream.range;
 
-    public DetectTable(long[] rounds, BiConsumer<Long, List<Detect>> consumer) {
-        super(rounds, new long[]{FIRST, SECOND}, null, consumer);
+public class DetectTable extends MessageTable<Detect> {
+    public DetectTable(long[] rounds, long arity, BiConsumer<Long, List<Detect>> consumer) {
+        super(rounds, arityToCols(arity), null, consumer);
+    }
+
+    private static long[] arityToCols(long arity) {
+        return range(0, arity).toArray();
     }
 
     private DetectTable(DetectTable original, BiConsumer<Long, List<Detect>> consumer) {
@@ -21,15 +24,15 @@ public class DetectTable extends MessageTable<Detect> {
         return (NIL == this) ? NIL : new DetectTable(this, consumer);
     }
 
-    public DetectTable(long[] rounds) {
-        this(rounds, (a, b) -> {});
+    public DetectTable(long[] rounds, long arity) {
+        this(rounds, arity, (a, b) -> {});
     }
 
     public boolean tryPut(Detect detect) {
-        return tryPut(detect.round, FIRST, detect) || tryPut(detect.round, SECOND, detect);
+        return tryPut(detect.round, detect);
     }
 
-    public static DetectTable NIL = new DetectTable(new long[]{}, (a, b) -> {}) {
+    public static DetectTable NIL = new DetectTable(new long[]{}, 0L, (a, b) -> {}) {
         @Override
         public boolean tryPut(Detect detect) {
             return false;

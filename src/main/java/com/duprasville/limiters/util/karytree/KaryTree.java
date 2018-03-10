@@ -24,6 +24,7 @@ package com.duprasville.limiters.util.karytree;
  */
 
 import static java.lang.Math.max;
+import static java.lang.Math.toIntExact;
 
 public class KaryTree {
     private final long ary;
@@ -167,4 +168,17 @@ public class KaryTree {
     public long siblingIndex(long nodeId) {
         return max(0L, nodeId - 1L) % ary;
     }
+
+//    public long[][] descendantsOfNode(long nodeId) {
+//        int levelId = toIntExact(levelOfNode(nodeId));
+//        int leafLevel = toIntExact(levelOfNode(getLeafLevel()));
+//        int descendantLevelCount = leafLevel - levelId;
+//
+//        long[][] descendantLevels = new long[descendantLevelCount][];
+//        for (int i = 0; i < descendantLevels.length; i++) {
+//            descendantLevels[i] =
+//
+//        }
+//        return new long[0];
+//    }
 }
