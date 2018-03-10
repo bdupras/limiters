@@ -12,7 +12,7 @@ public class MessageAppearance {
     static final Map<Class<? extends Message>, Double> colors = new HashMap<>();
     static {
         colors.put(Detect.class, lime());
-        colors.put(Full.class, orange());
+        colors.put(Full.class, yellow());
         colors.put(WindowFull.class, red());
     }
 

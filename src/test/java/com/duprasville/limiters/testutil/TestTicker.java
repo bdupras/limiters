@@ -5,6 +5,10 @@ import com.google.common.base.Ticker;
 public class TestTicker extends Ticker {
     private long ticks;
 
+    public TestTicker() {
+        this(0L);
+    }
+
     public TestTicker(long ticks) {
         this.ticks = ticks;
     }

@@ -7,11 +7,10 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Ticker;
 
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static java.lang.String.format;
 
 public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillMessageSink {
     @VisibleForTesting
@@ -27,7 +26,7 @@ public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillM
     final KaryTree karyTree;
     final MessageSource messageSource;
     final Stopwatch stopwatch;
-
+    final Random random;
 
     public TreeFillClusterRateLimiter(
             long permitsPerSecond,
@@ -35,15 +34,34 @@ public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillM
             long clusterSize,
             KaryTree karyTree,
             MessageSource messageSource,
-            Ticker ticker) {
+            Ticker ticker,
+            Random random) {
         this.clusterSize = clusterSize;
         this.karyTree = karyTree;
         this.messageSource = messageSource;
         this.stopwatch = Stopwatch.createStarted(ticker);
+        this.random = random;
+
         reconfigure(nodeId, clusterSize, karyTree);
         setRate(permitsPerSecond);
         currentWindowFrame = new AtomicLong(0L);
         currentWindow = new AtomicReference<>(new WindowState(currentWindowFrame.get(), windowConfig, messageSource));
+    }
+
+    public TreeFillClusterRateLimiter(
+            long permitsPerSecond,
+            long nodeId,
+            long clusterSize,
+            KaryTree karyTree,
+            MessageSource messageSource) {
+        this(permitsPerSecond,
+                nodeId,
+                clusterSize,
+                karyTree,
+                messageSource,
+                Ticker.systemTicker(),
+                new Random()
+        );
     }
 
     private void reconfigure(long clusterNodeId, long clusterSize, KaryTree karyTree) {
@@ -62,18 +80,21 @@ public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillM
                     new WindowState(currentWindowFrame.get(), windowConfig, messageSource)
             );
             // TODO ?? carry forward oldWindow.pendingPermitsToDetect ?
-            if (didAdvance && nodeConfig.isRootNode) {
-                long millis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
-                System.out.println(format(
-                        "Time %d, Node %d, Window %d, CPA %d, NPA %d, advance to Window %d",
-                        millis,
-                        nodeConfig.nodeId,
-                        oldWindow.windowId,
-                        oldWindow.getClusterPermitsAcquired(),
-                        oldWindow.getNodePermitsAcquired(),
-                        currentWindow.get().windowId
-                ));
-            }
+//            if (didAdvance && nodeConfig.isRootNode) {
+//                long millis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
+//                WindowState currentWin = currentWindow.get();
+//                System.out.println(format(
+//                        "Time %d, Node %d, Window %d, CPA %d, NPA %d, advance to Window %d, CPA %d, NPA %d",
+//                        millis,
+//                        nodeConfig.nodeId,
+//                        oldWindow.windowId,
+//                        oldWindow.getClusterPermitsAcquired(),
+//                        oldWindow.getNodePermitsAcquired(),
+//                        currentWin.windowId,
+//                        currentWin.getClusterPermitsAcquired(),
+//                        currentWin.getNodePermitsAcquired()
+//                ));
+//            }
         }
 
         return currentWindow.get();
@@ -86,7 +107,7 @@ public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillM
 
     @Override
     public void setRate(long permitsPerSecond) {
-        windowConfig = new WindowConfig(nodeConfig, permitsPerSecond);
+        windowConfig = new WindowConfig(nodeConfig, permitsPerSecond, random);
     }
 
     @Override
@@ -96,7 +117,7 @@ public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillM
 
     @Override
     public void receive(Detect detect) {
-        // Straggling Detects from a previous window can count towards the current window
+        //Straggling Detects from a previous window can count towards the current window
         currentWindow().receive(detect);
     }
 

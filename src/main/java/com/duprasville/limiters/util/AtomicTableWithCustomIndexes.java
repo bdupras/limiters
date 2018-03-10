@@ -62,6 +62,10 @@ public class AtomicTableWithCustomIndexes<V> extends AtomicTable<V> {
         return super.tryPut(superRow(row), superCol(col), value);
     }
 
+    public boolean tryPut(long row, V value) {
+        return super.tryPut(superRow(row), value);
+    }
+
     @Override
     public V get(int row, int col) {
         return this.get((long) row, (long) col);
@@ -75,6 +79,11 @@ public class AtomicTableWithCustomIndexes<V> extends AtomicTable<V> {
     @Override
     public boolean tryPut(int row, int col, V value) {
         return this.tryPut((long) row, (long) col, value);
+    }
+
+    @Override
+    public boolean tryPut(int row, V value) {
+        return this.tryPut((long) row, value);
     }
 
     protected int superRow(long row) {

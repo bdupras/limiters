@@ -45,6 +45,13 @@ public class AtomicTable<V> {
         return at(row, col).compareAndSet(emptyValue, value);
     }
 
+    public boolean tryPut(int row, V value) {
+        for (int col=0; col < getColumns(); col++) {
+            if (tryPut(row, col, value)) return true;
+        }
+        return false;
+    }
+
     private AtomicReference<V> at(int row, int col) {
         return table[row][col];
     }

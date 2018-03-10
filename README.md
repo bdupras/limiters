@@ -1,5 +1,8 @@
 limiters
 ========
+*NOTE:* top commit is work-in-progress and is a non-functional mess. `git reset --hard HEAD~1` to see the most recent buggy but almost functional version.
+
+
 Not for public use. This is a protoyping repo for implementing various distributed rate limiting algorithms.
 
 The main focus right now is the treefill algorithm described in the paper ["An optimal distributed trigger counting algorithm for large-scale networked systems"][1].

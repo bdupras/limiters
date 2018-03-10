@@ -1,13 +1,15 @@
 package com.duprasville.limiters.comms;
 
+import java.util.Random;
 import java.util.function.Consumer;
 
 public class TestMessageSource implements MessageSource {
+    final Random random;
     Consumer<Message> onSend = (msg) -> {};
 
-    public TestMessageSource() {
+    public TestMessageSource(Random random) {
+        this.random = random;
     }
-
 
     @Override
     public void send(Message message) {
@@ -20,6 +22,6 @@ public class TestMessageSource implements MessageSource {
 
     @Override
     public long anyAvailableNode(long[] nodes) {
-        return 0;
+        return nodes[random.nextInt(nodes.length)];
     }
 }

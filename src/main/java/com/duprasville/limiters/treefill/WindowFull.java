@@ -1,7 +1,7 @@
 package com.duprasville.limiters.treefill;
 
 public class WindowFull extends BaseTreeFillMessage {
-    final long permitsAcquired;
+    public final long permitsAcquired;
 
     WindowFull(long src, long dst, long window, long permitsAcquired) {
         super(src, dst, window);
@@ -18,6 +18,7 @@ public class WindowFull extends BaseTreeFillMessage {
         return this.getClass().getSimpleName() + "{" +
                 "src=" + src +
                 ", dst=" + dst +
+                ", window=" + window +
                 ", permitsAcquired=" + permitsAcquired +
                 '}';
     }
