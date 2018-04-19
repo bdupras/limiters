@@ -162,7 +162,7 @@ class WindowState {
     }
 
     private boolean tryAbsorbIntoCurrentRound(Detect detect) {
-        if (detect.window == windowId && detect.round <= nodeCurrentRound.get()) return false;
+        if (detect.window == windowId && detect.round < nodeCurrentRound.get()) return false;
         addToPendingPermitsAndSendDetectsIfNeeded(detect.permitsAcquired);
         return true;
     }
