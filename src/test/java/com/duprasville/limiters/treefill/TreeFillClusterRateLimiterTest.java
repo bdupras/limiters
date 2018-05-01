@@ -165,16 +165,17 @@ class TreeFillClusterRateLimiterTest {
                 karytree.getCapacity() - 1L,
                 0L,
                 1L,
-                2L // at round 1, permitToDetect is 3. Detect is sent when this is >= 3.
+                3L
         ));
         assertThat(detectsEmitted, is(empty())); // be
         assertThat(fullsEmitted.entrySet(), is(empty()));
+        for (int i=0; i<4; ++i)
         leafNode.receive(new Detect(
                 1L,
                 karytree.getCapacity() - 1L,
                 0L,
                 1L,
-                4L
+                3L
         ));
         assertThat(detectsEmitted, is(empty()));
         assertThat(fullsEmitted.entrySet(), hasSize(1));

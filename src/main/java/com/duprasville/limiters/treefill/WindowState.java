@@ -99,6 +99,13 @@ class WindowState {
             long permitsAcquired = detectsTable.getRow(detect.round).stream().mapToLong(d -> d.permitsAcquired).sum();
             ensureFullSentToParent(detect.round, permitsAcquired);
         }
+
+        // seokhyun
+        // when detectTable is full, Full should be sent to parent node
+        if (detectsTable.isRowFull(detect.round)) {
+            long permitsAcquired = detectsTable.getRow(detect.round).stream().mapToLong(d -> d.permitsAcquired).sum();
+            ensureFullSentToParent(detect.round, permitsAcquired);
+        }
         return stored;
     }
 
