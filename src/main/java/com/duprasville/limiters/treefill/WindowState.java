@@ -99,6 +99,13 @@ class WindowState {
             long permitsAcquired = detectsTable.getRow(detect.round).stream().mapToLong(d -> d.permitsAcquired).sum();
             ensureFullSentToParent(detect.round, permitsAcquired);
         }
+
+        // seokhyun
+        // when detectTable is full, Full should be sent to parent node
+        if (detectsTable.isRowFull(detect.round)) {
+            long permitsAcquired = detectsTable.getRow(detect.round).stream().mapToLong(d -> d.permitsAcquired).sum();
+            ensureFullSentToParent(detect.round, permitsAcquired);
+        }
         return stored;
     }
 
@@ -162,7 +169,7 @@ class WindowState {
     }
 
     private boolean tryAbsorbIntoCurrentRound(Detect detect) {
-        if (detect.window == windowId && detect.round <= nodeCurrentRound.get()) return false;
+        if (detect.window == windowId && detect.round < nodeCurrentRound.get()) return false;
         addToPendingPermitsAndSendDetectsIfNeeded(detect.permitsAcquired);
         return true;
     }

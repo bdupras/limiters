@@ -76,10 +76,12 @@ public class AtomicTableWithCustomIndexes<V> extends AtomicTable<V> {
         return this.getRow((long) row);
     }
 
-    @Override
-    public boolean tryPut(int row, int col, V value) {
-        return this.tryPut((long) row, (long) col, value);
-    }
+    // seokhyun
+    // this overrided function caused sort of infinite function calling loop
+//    @Override
+//    public boolean tryPut(int row, int col, V value) {
+//        return this.tryPut((long) row, (long) col, value);
+//    }
 
     @Override
     public boolean tryPut(int row, V value) {
