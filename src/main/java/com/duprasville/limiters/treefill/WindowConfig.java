@@ -1,5 +1,6 @@
 package com.duprasville.limiters.treefill;
 
+import java.util.Random;
 import java.util.stream.LongStream;
 
 import static com.duprasville.limiters.treefill.TreeFillMath.nodePermitsToDetectPerRound;
@@ -13,14 +14,14 @@ class WindowConfig {
     final DetectTable detectTableTemplate;
     public FullTable fullTableTemplate;
 
-    WindowConfig(NodeConfig nodeConfig, long clusterPermits) {
+    WindowConfig(NodeConfig nodeConfig, long clusterPermits, Random random) {
         this.nodeConfig = nodeConfig;
         this.clusterPermits = clusterPermits;
         this.nodePermitsPerRound = nodePermitsToDetectPerRound(clusterPermits, nodeConfig.nodeId, nodeConfig.clusterSize);
 
         this.rounds = LongStream.range(1, nodePermitsPerRound.length).toArray(); // [1L, 2L, ...]
         this.detectTableTemplate = nodeConfig.isLeafNode ? new DetectTable(rounds) : DetectTable.NIL;
-        this.fullTableTemplate = nodeConfig.isLeafNode ? FullTable.NIL : new FullTable(rounds, nodeConfig.children);
+        this.fullTableTemplate = nodeConfig.isLeafNode ? FullTable.NIL : new FullTable(rounds, nodeConfig.children, random);
     }
 
     long getPermitsToDetectPerRound(long round) {

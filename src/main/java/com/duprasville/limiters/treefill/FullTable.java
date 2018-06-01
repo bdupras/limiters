@@ -8,20 +8,24 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class FullTable extends MessageTable<Full>{
-    protected FullTable(long[] rounds, long[] children, BiConsumer<Long, List<Full>> consumer) {
-        super(rounds, children, null, consumer);
-    }
+    final Random random;
 
-    private FullTable(FullTable original, BiConsumer<Long, List<Full>> consumer) {
-        super(original, consumer);
+    public FullTable(long[] rounds, long[] children, Random random) {
+        this(rounds, children, random, (a, b) -> {});
     }
 
     public FullTable copy(BiConsumer<Long, List<Full>> consumer) {
         return (NIL == this) ? NIL : new FullTable(this, consumer);
     }
 
-    public FullTable(long[] rounds, long[] children) {
-        this(rounds, children, (a, b) -> {});
+    protected FullTable(long[] rounds, long[] children, Random random, BiConsumer<Long, List<Full>> consumer) {
+        super(rounds, children, null, consumer);
+        this.random = random;
+    }
+
+    private FullTable(FullTable original, BiConsumer<Long, List<Full>> consumer) {
+        super(original, consumer);
+        this.random = original.random;
     }
 
     public boolean tryPut(Full full) {
@@ -40,7 +44,7 @@ public class FullTable extends MessageTable<Full>{
         return false;
     }
 
-    public static FullTable NIL = new FullTable(new long[]{}, new long[]{}, (a, b) -> {}) {
+    public static FullTable NIL = new FullTable(new long[]{}, new long[]{}, new Random(), (a, b) -> {}) {
         @Override
         public boolean tryPut(Full full) {
             return false;

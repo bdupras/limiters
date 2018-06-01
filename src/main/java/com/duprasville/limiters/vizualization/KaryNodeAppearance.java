@@ -39,7 +39,7 @@ public class KaryNodeAppearance {
     public double[] relXY(long nodeId) {
         long nodeLevel = karyTree.levelOfNode(nodeId);
         long maxLevel = karyTree.getHeight() - 1L;
-        if (nodeLevel < maxLevel) {
+        if (nodeLevel == 0) {
             return relXYtree(nodeId);
         } else {
             return relXrandY(nodeId);

@@ -7,6 +7,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Ticker;
 
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -27,6 +28,7 @@ public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillM
     final KaryTree karyTree;
     final MessageSource messageSource;
     final Stopwatch stopwatch;
+    final Random random;
 
 
     public TreeFillClusterRateLimiter(
@@ -35,11 +37,13 @@ public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillM
             long clusterSize,
             KaryTree karyTree,
             MessageSource messageSource,
-            Ticker ticker) {
+            Ticker ticker,
+            Random random) {
         this.clusterSize = clusterSize;
         this.karyTree = karyTree;
         this.messageSource = messageSource;
         this.stopwatch = Stopwatch.createStarted(ticker);
+        this.random = random;
         reconfigure(nodeId, clusterSize, karyTree);
         setRate(permitsPerSecond);
         currentWindowFrame = new AtomicLong(0L);
@@ -86,7 +90,7 @@ public class TreeFillClusterRateLimiter implements ClusterRateLimiter, TreeFillM
 
     @Override
     public void setRate(long permitsPerSecond) {
-        windowConfig = new WindowConfig(nodeConfig, permitsPerSecond);
+        windowConfig = new WindowConfig(nodeConfig, permitsPerSecond, random);
     }
 
     @Override
