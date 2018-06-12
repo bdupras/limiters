@@ -2,12 +2,8 @@ package com.duprasville.limiters.treefill;
 
 import com.duprasville.limiters.comms.MessageSource;
 import com.duprasville.limiters.util.AtomicMaxLongIncrementor;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Multimaps;
 
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
