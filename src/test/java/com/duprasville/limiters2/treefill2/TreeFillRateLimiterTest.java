@@ -32,6 +32,5 @@ class TreeFillRateLimiterTest {
     @Test
     void tryAcquire() {
         assertTrue(cluster.tryAcquire(10));
-        assertFalse(cluster.tryAcquire(100_000));
     }
 }
