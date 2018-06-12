@@ -1,10 +1,10 @@
 package com.duprasville.limiters.treefill;
 
-public class Full extends BaseMessage {
+public class Acquire extends BaseMessage {
     final long round;
     final long permitsAcquired;
 
-    Full(long src, long dst, long window, long round, long permitsAcquired) {
+    Acquire(long src, long dst, long window, long round, long permitsAcquired) {
         super(src, dst, window);
         this.round = round;
         this.permitsAcquired = permitsAcquired;

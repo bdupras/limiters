@@ -1,6 +1,6 @@
 package com.duprasville.limiters.treefill;
 
-public class Detect extends BaseTreeFillMessage {
+public class Detect extends BaseMessage {
     final long round;
     final long permitsAcquired;
 
@@ -8,11 +8,6 @@ public class Detect extends BaseTreeFillMessage {
         super(src, dst, window);
         this.round = round;
         this.permitsAcquired = permitsAcquired;
-    }
-
-    @Override
-    public void deliver(TreeFillMessageSink messageSink) {
-        messageSink.receive(this);
     }
 
     @Override

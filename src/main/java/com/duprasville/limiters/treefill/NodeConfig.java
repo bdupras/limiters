@@ -1,6 +1,6 @@
 package com.duprasville.limiters.treefill;
 
-import com.duprasville.limiters.util.karytree.KaryTree;
+import com.duprasville.limiters.util.KaryTree;
 
 /**
  * Describes this node and its neighborhood within a virtual k-ary tree structure.

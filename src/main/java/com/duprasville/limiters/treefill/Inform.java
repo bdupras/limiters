@@ -1,15 +1,10 @@
 package com.duprasville.limiters.treefill;
 
-public class Inform extends BaseTreeFillMessage {
+public class Inform extends BaseMessage {
     final String msg;
     Inform(long src, long dst, long window, String msg) {
         super(src, dst, window);
         this.msg = msg;
-    }
-
-    @Override
-    public void deliver(TreeFillMessageSink messageSink) {
-        messageSink.receive(this);
     }
 
     @Override
