@@ -107,9 +107,4 @@ public class EvenRoundsNoTickerFeatureTest {
     Assertions.assertFalse(deliverator.acquireSingle(3), "Should have failed to acquire but actually acquired");
   }
 
-  //NO time advancement here, and exhaust nodes not so perfectly with message delays
-  @Test
-  void testWithMessageDelays() throws ExecutionException, InterruptedException {
-    //TBD
-  }
 }

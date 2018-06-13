@@ -5,9 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import com.duprasville.limiters.api.DistributedRateLimiter;
 import com.duprasville.limiters.api.Message;
@@ -15,8 +13,7 @@ import com.duprasville.limiters.api.MessageDeliverator;
 
 public class ProxyMessageDeliverator implements MessageDeliverator {
 
-  private Map<Long, DistributedRateLimiter> idToNode = new HashMap<>();
-
+  protected Map<Long, DistributedRateLimiter> idToNode = new HashMap<>();
 
   @Override
   public CompletableFuture<Void> send(Message message) {
