@@ -29,13 +29,13 @@ public class GenericNodeTest {
 
   @Test
   void testAcquire() throws ExecutionException, InterruptedException {
-    GenericNode node = new GenericNode(1, 1, 8, false, mockMessageDeliverator);
+    GenericNode node = new GenericNode(1, 1, 8, mockMessageDeliverator);
     assertTrue(node.acquire().get());
   }
 
   @Test
   void testAcquireDetect() {
-    GenericNode node = new GenericNode(1, 2, 4, false, mockMessageDeliverator);
+    GenericNode node = new GenericNode(1, 2, 4, mockMessageDeliverator);
     node.acquire();
 
     assertTrue(!mockMessageDeliverator.messagesSent.isEmpty());
@@ -44,14 +44,14 @@ public class GenericNodeTest {
 
   @Test
   void testReceive() throws ExecutionException, InterruptedException {
-    GenericNode node = new GenericNode(1, 1, 32, false, mockMessageDeliverator);
+    GenericNode node = new GenericNode(1, 1, 32, mockMessageDeliverator);
     node.receive(new Detect(1, 1, 0, 1));
     assertTrue(node.selfPermitAllocated);
   }
 
   @Test
   void testWithOneNodeAndTwoPermitsAllowed() {
-    GenericNode node = new GenericNode(1, 1, 2, false, mockMessageDeliverator);
+    GenericNode node = new GenericNode(1, 1, 2,  mockMessageDeliverator);
     mockMessageDeliverator.addNode(node);
     node.acquire();
     // because more permits were requested than there is space per round (with one active node),
@@ -65,13 +65,13 @@ public class GenericNodeTest {
 
   private List<GenericNode> buildGraph(int N, int W) {
     List<GenericNode> nodes = new ArrayList<>();
-    GenericNode root = new GenericNode(1, N, W, true, mockMessageDeliverator);
+    GenericNode root = new GenericNode(1, N, W,  mockMessageDeliverator);
     mockMessageDeliverator.addNode(root);
     nodes.add(root);
-    GenericNode leftChild = new GenericNode(2, N, W, false, mockMessageDeliverator);
+    GenericNode leftChild = new GenericNode(2, N, W,  mockMessageDeliverator);
     mockMessageDeliverator.addNode(leftChild);
     nodes.add(leftChild);
-    GenericNode rightChild = new GenericNode(3, N, W, false, mockMessageDeliverator);
+    GenericNode rightChild = new GenericNode(3, N, W,  mockMessageDeliverator);
     mockMessageDeliverator.addNode(rightChild);
     nodes.add(rightChild);
 

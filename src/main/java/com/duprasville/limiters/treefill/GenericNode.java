@@ -22,7 +22,7 @@ public class GenericNode implements DistributedRateLimiter {
   private long leftChild = 0;
   private long rightChild = 0;
 
-  private final int N;
+  private final long N;
   private final long W;
   private int shareThisRound = 0;
   private final boolean hasChildren;
@@ -36,8 +36,8 @@ public class GenericNode implements DistributedRateLimiter {
   boolean selfPermitAllocated;
   boolean isThisLastRound;
 
-  private void assertWSuitable(int N, int W) {
-    int r = W / N;
+  private void assertWSuitable(long N, long W) {
+    long r = W / N;
     while ((r > 1) && (r % 2 == 0)) {
       r = r >> 1;
     }
@@ -47,14 +47,14 @@ public class GenericNode implements DistributedRateLimiter {
     }
   }
 
-  GenericNode(int id, int N, int W, boolean hasChildren, MessageDeliverator m) {
+  public GenericNode(long id, long N, long W, MessageDeliverator m) {
     this.id = id;
     this.N = N;
 
     assertWSuitable(N, W);
     this.W = W;
 
-    this.hasChildren = hasChildren;
+    this.hasChildren = (N > 1) && (this.id <= (N / 2));
     // if we are the root, parentId is 0, which is fine since node ids begin at 1
     this.parentId = id >> 1;
 
@@ -95,12 +95,15 @@ public class GenericNode implements DistributedRateLimiter {
   }
 
   @Override
-  public CompletableFuture<Boolean> acquire(long permits) {
-    return CompletableFuture.completedFuture(false);
+  public CompletableFuture<Boolean> acquire() {
+    return acquire(1);
   }
 
   @Override
-  public CompletableFuture<Boolean> acquire() {
+  public CompletableFuture<Boolean> acquire(long permits) {
+    // TODO DO NOT
+    assert(permits == 1L);
+
     if (this.windowOpen && (this.shareThisRound > 0)) {
       logger.info(
           "WINDOW IS OPEN! " +
@@ -132,7 +135,7 @@ public class GenericNode implements DistributedRateLimiter {
       messageDeliverator.send(
           new CloseWindow(
               this.id,
-              this.parentId,
+              this.id,
               this.round
           )
       );

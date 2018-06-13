@@ -31,7 +31,8 @@ public class ProxyMessageDeliverator implements MessageDeliverator {
   }
 
   public boolean acquireSingle(long nodeId) {
-    CompletableFuture<Boolean> future = acquireAsync(nodeId, 1).get(1);
+    List<CompletableFuture<Boolean>> completableFutures = acquireAsync(nodeId, 1);
+    CompletableFuture<Boolean> future = completableFutures.get(0);
     try {
       return future.get(2, TimeUnit.SECONDS);
     } catch (Exception e) {
