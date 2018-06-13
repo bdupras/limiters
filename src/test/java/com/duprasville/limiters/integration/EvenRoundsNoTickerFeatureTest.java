@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class FirstIntegFeatureTest {
+public class EvenRoundsNoTickerFeatureTest {
 
   private DistributedRateLimiter treeNode1;
   private DistributedRateLimiter treeNode2;
@@ -105,5 +105,11 @@ public class FirstIntegFeatureTest {
     Assertions.assertFalse(deliverator.acquireSingle(1), "Should have failed to acquire but actually acquired");
     Assertions.assertFalse(deliverator.acquireSingle(2), "Should have failed to acquire but actually acquired");
     Assertions.assertFalse(deliverator.acquireSingle(3), "Should have failed to acquire but actually acquired");
+  }
+
+  //NO time advancement here, and exhaust nodes not so perfectly with message delays
+  @Test
+  void testWithMessageDelays() throws ExecutionException, InterruptedException {
+    //TBD
   }
 }
