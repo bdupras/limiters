@@ -107,29 +107,9 @@ public class EvenRoundsNoTickerFeatureTest {
     Assertions.assertFalse(deliverator.acquireSingle(3), "Should have failed to acquire but actually acquired");
   }
 
-  //NO time advancement here, and exhaust nodes not so perfectly
+  //NO time advancement here, and exhaust nodes not so perfectly with message delays
   @Test
-  void testFromTwoNodes() throws ExecutionException, InterruptedException {
-    //Round 1 - 12 total permits
-    deliverator.acquireOrFailSynchronous(2, 6);
-    deliverator.acquireOrFailSynchronous(3, 5);
-    deliverator.acquireOrFailSynchronous(2, 1);
-
-    //Round 2 - 6 total
-    deliverator.acquireOrFailSynchronous(2, 4);
-    deliverator.acquireOrFailSynchronous(3, 2);
-
-    //Round 3 - 3 total
-    deliverator.acquireOrFailSynchronous(2, 1);
-    deliverator.acquireOrFailSynchronous(3, 2);
-
-    //Round 4
-    deliverator.acquireOrFailSynchronous(3, 1);
-    deliverator.acquireOrFailSynchronous(2, 2);
-
-    //assert EVERY node is now rate limited
-    Assertions.assertFalse(deliverator.acquireSingle(1), "Should have failed to acquire but actually acquired");
-    Assertions.assertFalse(deliverator.acquireSingle(2), "Should have failed to acquire but actually acquired");
-    Assertions.assertFalse(deliverator.acquireSingle(3), "Should have failed to acquire but actually acquired");
+  void testWithMessageDelays() throws ExecutionException, InterruptedException {
+    //TBD
   }
 }

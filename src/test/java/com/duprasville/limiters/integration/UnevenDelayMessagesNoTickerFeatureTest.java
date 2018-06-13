@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class UnevenRoundsNoTickerFeatureTest {
+public class UnevenDelayMessagesNoTickerFeatureTest {
 
   private DistributedRateLimiter treeNode1;
   private DistributedRateLimiter treeNode2;
