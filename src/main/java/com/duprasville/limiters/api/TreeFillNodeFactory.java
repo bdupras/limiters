@@ -12,7 +12,7 @@ public class TreeFillNodeFactory {
    * To be added to
    *
    */
-  public static Node createNode(MessageDeliverator sender, Executor executor) {
+  public static DistributedRateLimiter createNode(MessageDeliverator sender, Executor executor, NodeConfig nodeConfig) {
     return null;
   }
 

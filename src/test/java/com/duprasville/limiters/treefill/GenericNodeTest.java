@@ -7,8 +7,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import com.duprasville.limiters.api.DistributedRateLimiter;
 import com.duprasville.limiters.api.MessageDeliverator;
-import com.duprasville.limiters.api.Node;
 import com.duprasville.limiters.treefill.domain.Detect;
 import com.duprasville.limiters.api.Message;
 
@@ -93,17 +93,17 @@ public class GenericNodeTest {
 
   class MockMessageDeliverator implements MessageDeliverator {
     public List<Message> messagesSent = new ArrayList<>();
-    Map<Long, Node> nodesById = new HashMap<>();
+    Map<Long, DistributedRateLimiter> nodesById = new HashMap<>();
 
 
-    public void addNode(Node node) {
-      nodesById.put(node.getId(), node);
+    public void addNode(DistributedRateLimiter distributedRateLimiter) {
+      nodesById.put(distributedRateLimiter.getId(), distributedRateLimiter);
     }
 
     @Override
     public CompletableFuture<Void> send(Message message) {
       messagesSent.add(message);
-      Node dest = nodesById.get(message.getDst());
+      DistributedRateLimiter dest = nodesById.get(message.getDst());
 
       if (dest != null) dest.receive(message).thenApply(s -> null);
 

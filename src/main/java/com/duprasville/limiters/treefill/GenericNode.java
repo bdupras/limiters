@@ -6,13 +6,13 @@ import java.util.logging.Logger;
 
 import com.duprasville.limiters.api.Message;
 import com.duprasville.limiters.api.MessageDeliverator;
-import com.duprasville.limiters.api.Node;
+import com.duprasville.limiters.api.DistributedRateLimiter;
 import com.duprasville.limiters.treefill.domain.ChildFull;
 import com.duprasville.limiters.treefill.domain.CloseWindow;
 import com.duprasville.limiters.treefill.domain.Detect;
 import com.duprasville.limiters.treefill.domain.RoundFull;
 
-public class GenericNode implements Node {
+public class GenericNode implements DistributedRateLimiter {
   private final Logger logger;
 
   private final long id;
@@ -125,7 +125,7 @@ public class GenericNode implements Node {
   }
 
   @Override
-  public CompletableFuture<Boolean> receive(Message message) {
+  public CompletableFuture<Void> receive(Message message) {
     logger.info("receive(): " + message.toString());
 
     boolean areChildrenFull = isGraphBelowFull();
@@ -208,7 +208,7 @@ public class GenericNode implements Node {
         throw new UnsupportedOperationException("oops");
     }
 
-    return CompletableFuture.completedFuture(true);
+    return CompletableFuture.completedFuture(null);
   }
 
   private void handleDetectMessage(Detect message, boolean amRoot, boolean graphBelowIsFull) {

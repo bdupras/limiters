@@ -22,7 +22,7 @@ algorithms
 - not fault tolerant yet
 
 #### bugs / not working yet
-- misunderstanding in the way the leaf node detectors are allocated 
+- misunderstanding in the way the leaf distributedRateLimiter detectors are allocated
   - too many Detects are generated before WindowFull is broadcast
   - all nodes particiapte in the detect tree
   - number of Detect slots is tied to the dimensions of the tree and cluster size and doesn't match what's really needed
@@ -34,7 +34,7 @@ algorithms
 - datastructures are overly verbose to provide high visibility in initial code design and debugging; can be made far more efficient when the whole thing functions properly and passes tests
 - support arbitrary cluster sizes
 - support fault tolerance and rolling deployments
-  - replace single root node with some form of virtualized/distributed root node
+  - replace single root distributedRateLimiter with some form of virtualized/distributed root distributedRateLimiter
   - rearrange karitytree to be depth-first
 
 
