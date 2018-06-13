@@ -28,10 +28,10 @@ public class UnevenDelayMessagesNoTickerFeatureTest {
   private Random random;
 
   //Rate / N nodes = 8 per node TOTAL
-  //Round 1 - 4 permits
-  //Round 2 - 2 permits
-  //Round 3 - 1 permit
-  //Round 4 - 1 permit
+  //Round 1 - 4 permits * 3 = 12
+  //Round 2 - 2 permits * 3 = 6
+  //Round 3 - 1 permit * 3 = 3
+  //Round 4 - 1 permit * 3 = 3
   private int rate = 24;
 
   @BeforeEach
@@ -83,4 +83,28 @@ public class UnevenDelayMessagesNoTickerFeatureTest {
     Assertions.assertFalse(deliverator.acquireSingle(3), "Should have failed to acquire but actually acquired");
   }
 
+  //NO time advancement here, and exhaust nodes not so perfectly with message delays
+  @Test
+  void testSomeUnevenOversubscribedRounds() throws ExecutionException, InterruptedException {
+    //Round 1 - total 20 leading to Round 3!!!  round 1 total 12, then 6
+    deliverator.acquireOrFailSynchronous(1, 6);
+    deliverator.acquireOrFailSynchronous(2, 7);
+    deliverator.acquireOrFailSynchronous(3, 7);
+    deliverator.releaseMessages();
+
+    //Round 2 virtually skipped
+
+    //Round 3
+    deliverator.acquireOrFailSynchronous(1, 3);
+    deliverator.acquireOrFailSynchronous(2, 1);
+    deliverator.acquireOrFailSynchronous(3, 1);
+    deliverator.releaseMessages();
+
+    //Round 4 virtually skipped
+
+    //assert EVERY node is now rate limited
+    Assertions.assertFalse(deliverator.acquireSingle(1), "Should have failed to acquire but actually acquired");
+    Assertions.assertFalse(deliverator.acquireSingle(2), "Should have failed to acquire but actually acquired");
+    Assertions.assertFalse(deliverator.acquireSingle(3), "Should have failed to acquire but actually acquired");
+  }
 }
