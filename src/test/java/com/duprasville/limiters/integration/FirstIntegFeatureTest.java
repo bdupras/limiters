@@ -1,25 +1,30 @@
 package com.duprasville.limiters.integration;
 
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import com.duprasville.limiters.api.DistributedRateLimiter;
-import com.duprasville.limiters.api.NodeConfig;
-import com.duprasville.limiters.api.TreeFillNodeFactory;
+import com.duprasville.limiters.api.DistributedRateLimiters;
+import com.duprasville.limiters.api.TreeFillConfig;
 import com.duprasville.limiters.integration.proxies.ProxyMessageDeliverator;
 
+import com.duprasville.limiters.testutil.TestTicker;
+import com.google.common.base.Ticker;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class FirstIntegFeatureTest {
 
-  private ProxyMessageDeliverator deliverator;
-  private Executor executor = Executors.newSingleThreadExecutor();
   private DistributedRateLimiter treeNode1;
   private DistributedRateLimiter treeNode2;
   private DistributedRateLimiter treeNode3;
+  private Ticker ticker;
+  private ProxyMessageDeliverator deliverator;
+  private Executor executor;
+  private Random random;
 
   //Rate / N nodes = 8 per node TOTAL
   //Round 1 - 4 permits
@@ -30,10 +35,14 @@ public class FirstIntegFeatureTest {
 
   @BeforeEach
   void init() {
-    deliverator = new ProxyMessageDeliverator();
-    treeNode1 = TreeFillNodeFactory.createNode(deliverator, executor, new NodeConfig(3, 1));
-    treeNode2 = TreeFillNodeFactory.createNode(deliverator, executor, new NodeConfig(3, 2));
-    treeNode3 = TreeFillNodeFactory.createNode(deliverator, executor, new NodeConfig(3, 3));
+    this.ticker = new TestTicker(0L);
+    this.executor = Executors.newSingleThreadExecutor();
+    this.random = new Random(0xDEADBEEF);
+    this.deliverator = new ProxyMessageDeliverator();
+
+    treeNode1 = DistributedRateLimiters.treefill(new TreeFillConfig(1, 3, 100), ticker, executor, deliverator, random);
+    treeNode2 = DistributedRateLimiters.treefill(new TreeFillConfig(2, 3, 100), ticker, executor, deliverator, random);
+    treeNode3 = DistributedRateLimiters.treefill(new TreeFillConfig(3, 3, 100), ticker, executor, deliverator, random);
 
     deliverator.setNode(1, treeNode1);
     deliverator.setNode(2, treeNode2);

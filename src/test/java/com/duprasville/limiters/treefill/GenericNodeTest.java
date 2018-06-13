@@ -93,8 +93,8 @@ public class GenericNodeTest {
     Map<Long, DistributedRateLimiter> nodesById = new HashMap<>();
 
 
-    public void addNode(DistributedRateLimiter distributedRateLimiter) {
-      nodesById.put(distributedRateLimiter.getId(), distributedRateLimiter);
+    public void addNode(GenericNode genericNode) {
+      nodesById.put(genericNode.getId(), genericNode);
     }
 
     @Override

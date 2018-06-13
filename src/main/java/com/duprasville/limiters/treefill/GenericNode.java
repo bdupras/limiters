@@ -75,9 +75,13 @@ public class GenericNode implements DistributedRateLimiter {
     }
   }
 
-  @Override
   public Long getId() {
     return this.id;
+  }
+
+  @Override
+  public CompletableFuture<Boolean> acquire(long permits) {
+    return CompletableFuture.completedFuture(false);
   }
 
   @Override

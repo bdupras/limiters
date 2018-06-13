@@ -3,15 +3,18 @@ package com.duprasville.limiters.api;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * acquire() is used by clients to ask for one permit
- * receive(message) is used by us to enqueue a message for processing.
+ * Main interface for distributed rate limiting implementations to provide.
  */
+@FunctionalInterface
 public interface DistributedRateLimiter {
+    CompletableFuture<Boolean> acquire(long permits);
 
-    CompletableFuture<Boolean> acquire();
+    default CompletableFuture<Boolean> acquire() {
+        return acquire(1L);
+    }
 
-    CompletableFuture<Void> receive(Message message);
-
-    Long getId();
+    default CompletableFuture<Void> receive(Message message) {
+        return CompletableFuture.completedFuture(null);
+    }
 }
 
