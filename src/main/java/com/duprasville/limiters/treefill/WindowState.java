@@ -1,19 +1,25 @@
 package com.duprasville.limiters.treefill;
 
-import com.duprasville.limiters.api.Message;
-import com.duprasville.limiters.api.MessageDeliverator;
-import com.duprasville.limiters.treefill.domain.*;
-import com.duprasville.limiters.util.SerialExecutor;
-
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.logging.Logger;
 
+import com.duprasville.limiters.api.Message;
+import com.duprasville.limiters.api.MessageDeliverator;
+import com.duprasville.limiters.treefill.domain.Acquire;
+import com.duprasville.limiters.treefill.domain.ChildFull;
+import com.duprasville.limiters.treefill.domain.CloseWindow;
+import com.duprasville.limiters.treefill.domain.Detect;
+import com.duprasville.limiters.treefill.domain.RoundFull;
+import com.duprasville.limiters.treefill.domain.TreeFillMessage;
+import com.duprasville.limiters.util.SerialExecutor;
+
 class WindowState {
   // Used to receive & throw away very delayed messages - better than mucking with Option<WindowState>
   public static final WindowState NIL_WINDOW =
-          new WindowState(1, 1, 1, (message) -> CompletableFuture.completedFuture(null), (e) -> {});
+      new WindowState(1, 1, 1, (message) -> CompletableFuture.completedFuture(null), (e) -> {
+      });
 
   private final Logger logger;
   private final SerialExecutor messageExecutor;
@@ -99,7 +105,7 @@ class WindowState {
 
   public CompletableFuture<Boolean> acquire(long permits) {
     // TODO DO NOT
-    assert(permits == 1L);
+    assert (permits == 1L);
 
     if (this.windowOpen && (this.shareThisRound > 0)) {
       logger.info(
@@ -152,7 +158,7 @@ class WindowState {
     return CompletableFuture.completedFuture(null);
   }
 
-    CompletableFuture<Void> process(TreeFillMessage message) {
+  CompletableFuture<Void> process(TreeFillMessage message) {
     logger.info("receive(): " + message.toString());
 
     boolean areChildrenFull = isGraphBelowFull();
@@ -161,9 +167,11 @@ class WindowState {
     switch (message.type) {
       case Acquire:
         long permitsAcquired = ((Acquire) message).getPermitsAcquired();
-        this.permitCounter += permitsAcquired;
 
-        if (this.permitCounter >= this.shareThisRound) {
+        if ((this.permitCounter + permitsAcquired) < this.shareThisRound) {
+          this.permitCounter += permitsAcquired;
+        } else if (this.permitCounter >= this.shareThisRound) {
+
           // we need to allow more collection of permits locally
           this.permitCounter = 0;
 
