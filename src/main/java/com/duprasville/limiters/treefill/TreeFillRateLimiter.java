@@ -58,6 +58,12 @@ public class TreeFillRateLimiter implements DistributedRateLimiter {
     @Override
     public CompletableFuture<Void> receive(Message message) {
         TreeFillMessage treefillMessage = (TreeFillMessage) message; // TODO validate inbound message first
+
+        // TODO this is a nasty dirty hack - stop it.
+        if (treefillMessage.window == -1) {
+            treefillMessage.window = currentWindowFrame();
+        }
+
         return getWindowFor(treefillMessage.window).receive(treefillMessage);
     }
 
@@ -69,7 +75,7 @@ public class TreeFillRateLimiter implements DistributedRateLimiter {
         currentWindows
                 .keySet()
                 .stream()
-                .filter(frame -> allowedWindowFrame(currentWindowFrame, frame))
+                .filter(frame -> !allowedWindowFrame(currentWindowFrame, frame))
                 .forEach(currentWindows::remove);
     }
 
