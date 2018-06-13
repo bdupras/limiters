@@ -8,9 +8,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import com.duprasville.limiters.api.DistributedRateLimiter;
+import com.duprasville.limiters.api.Message;
 import com.duprasville.limiters.api.MessageDeliverator;
 import com.duprasville.limiters.treefill.domain.Detect;
-import com.duprasville.limiters.api.Message;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,32 +60,101 @@ public class GenericNodeTest {
     assert (!node.windowOpen);
   }
 
+  private List<GenericNode> buildGraph(int N, int W) {
+    List<GenericNode> nodes = new ArrayList<>();
+    GenericNode root = new GenericNode(1, N, W, true, mockMessageDeliverator);
+    mockMessageDeliverator.addNode(root);
+    nodes.add(root);
+    GenericNode leftChild = new GenericNode(2, N, W, false, mockMessageDeliverator);
+    mockMessageDeliverator.addNode(leftChild);
+    nodes.add(leftChild);
+    GenericNode rightChild = new GenericNode(3, N, W, false, mockMessageDeliverator);
+    mockMessageDeliverator.addNode(rightChild);
+    nodes.add(rightChild);
+
+    return nodes;
+  }
+
+  private void runMultiTest(boolean acquireOnRoot) {
+    GenericNode acquiringNode;
+
+    List<GenericNode> nodes = buildGraph(3, 3);
+
+    GenericNode root = nodes.get(0);
+    GenericNode leftChild = nodes.get(1);
+    GenericNode rightChild = nodes.get(2);
+
+    if (acquireOnRoot) {
+      acquiringNode = root;
+    } else {
+      acquiringNode = leftChild;
+    }
+
+    acquiringNode.acquire();
+    assert (root.windowOpen);
+    assert (leftChild.windowOpen);
+    assert (rightChild.windowOpen);
+
+    acquiringNode.acquire();
+    assert (root.windowOpen);
+    assert (leftChild.windowOpen);
+    assert (rightChild.windowOpen);
+
+    acquiringNode.acquire();
+    assert (!root.windowOpen);
+    assert (!leftChild.windowOpen);
+    assert (!rightChild.windowOpen);
+
+  }
+
   @Test
   void testWithThreeNodesAndThreePermitsAllowed() {
-    GenericNode root = new GenericNode(1, 3, 3, true, mockMessageDeliverator);
-    mockMessageDeliverator.addNode(root);
-    GenericNode leftChild = new GenericNode(2, 3, 3, false, mockMessageDeliverator);
-    mockMessageDeliverator.addNode(leftChild);
-    GenericNode rightChild = new GenericNode(3, 3, 3, false, mockMessageDeliverator);
-    mockMessageDeliverator.addNode(rightChild);
+    runMultiTest(false);
+  }
 
+  @Test
+  void testSendingToRootWithThreeNodesAndThreePermitsAllowed() {
+    runMultiTest(true);
+  }
+
+  @Test
+  void testSendingToLeftWith12PermitsAndThreeNodes() {
+    List<GenericNode> nodes = buildGraph(3, 12);
+
+    GenericNode root = nodes.get(0);
+    GenericNode leftChild = nodes.get(1);
+
+    leftChild.acquire();
+    leftChild.acquire();
+    leftChild.acquire();
+    leftChild.acquire();
     leftChild.acquire();
 
     assert (root.windowOpen);
-    assert (leftChild.windowOpen);
-    assert (rightChild.windowOpen);
+
+    assert (root.round == 1);
 
     leftChild.acquire();
 
+    assert (root.round == 2);
+
+    leftChild.acquire();
+    leftChild.acquire();
+
     assert (root.windowOpen);
-    assert (leftChild.windowOpen);
-    assert (rightChild.windowOpen);
+
+    leftChild.acquire();
+
+    assert (root.round == 3);
+
+    leftChild.acquire();
+    leftChild.acquire();
+
+    assert (root.windowOpen);
 
     leftChild.acquire();
 
     assert (!root.windowOpen);
-    assert (!leftChild.windowOpen);
-    assert (!rightChild.windowOpen);
   }
 
   class MockMessageDeliverator implements MessageDeliverator {

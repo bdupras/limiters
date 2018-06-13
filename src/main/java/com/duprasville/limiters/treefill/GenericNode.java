@@ -145,6 +145,9 @@ public class GenericNode implements DistributedRateLimiter {
         this.permitCounter += permitsAcquired;
 
         if (this.permitCounter >= this.shareThisRound) {
+          // we need to allow more collection of permits locally
+          this.permitCounter = 0;
+
           messageDeliverator.send(
               new Detect(
                   message.getSrc(),
@@ -159,7 +162,8 @@ public class GenericNode implements DistributedRateLimiter {
       case Detect:
         if (!this.selfPermitAllocated) {
           this.selfPermitAllocated = true;
-          notifyParentIfAny(message);
+
+          if (isGraphBelowFull()) notifyParentIfAny(message);
         } else if (!areChildrenFull) {
           Optional<Long> maybeUnfilledChild = getUnfilledChild();
 
