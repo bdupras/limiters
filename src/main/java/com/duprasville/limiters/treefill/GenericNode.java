@@ -4,9 +4,10 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
+import com.duprasville.limiters.api.DistributedRateLimiter;
 import com.duprasville.limiters.api.Message;
 import com.duprasville.limiters.api.MessageDeliverator;
-import com.duprasville.limiters.api.DistributedRateLimiter;
+import com.duprasville.limiters.treefill.domain.Acquire;
 import com.duprasville.limiters.treefill.domain.ChildFull;
 import com.duprasville.limiters.treefill.domain.CloseWindow;
 import com.duprasville.limiters.treefill.domain.Detect;
@@ -58,7 +59,7 @@ public class GenericNode implements DistributedRateLimiter {
 
   private void resetThisNode() {
     this.shareThisRound =
-        (int) (this.W / ((long) Math.pow(2,this.round) * this.N));
+        (int) (this.W / ((long) Math.pow(2, this.round) * this.N));
 
     if (this.shareThisRound == 0) {
       this.isThisLastRound = true;
@@ -93,12 +94,7 @@ public class GenericNode implements DistributedRateLimiter {
 
       // enqueue(Detect d) -- on ourselves
       if ((this.permitCounter + 1) <= this.shareThisRound) {
-        this.permitCounter++;
-        handleDetectMessage(
-            new Detect(this.id, this.id, this.round, this.permitCounter),
-            isRoot(),
-            isGraphBelowFull()
-        );
+        messageDeliverator.send(new Acquire(this.id, this.id, this.round, 1));
         return CompletableFuture.completedFuture(true);
       } else if (((this.permitCounter + 1) > this.shareThisRound) &&
           ((this.permitCounter + 1) <= this.W) || (this.N > this.W)) {
@@ -140,8 +136,49 @@ public class GenericNode implements DistributedRateLimiter {
     boolean amRoot = isRoot();
 
     switch (message.getType()) {
+      case Acquire:
+        long permitsAcquired = ((Acquire) message).getPermitsAcquired();
+        this.permitCounter += permitsAcquired;
+
+        if (this.permitCounter >= this.shareThisRound) {
+          messageDeliverator.send(
+              new Detect(
+                  message.getSrc(),
+                  this.id,
+                  this.round,
+                  permitsAcquired
+              )
+          );
+        }
+
+        break;
       case Detect:
-        handleDetectMessage((Detect) message, amRoot, areChildrenFull);
+        if (!this.selfPermitAllocated) {
+          this.selfPermitAllocated = true;
+          notifyParentIfAny(message);
+        } else if (!areChildrenFull) {
+          Optional<Long> maybeUnfilledChild = getUnfilledChild();
+
+          if (maybeUnfilledChild.isPresent()) {
+            messageDeliverator.send(
+                new Detect(
+                    message.getSrc(),
+                    maybeUnfilledChild.get(),
+                    this.round,
+                    ((Detect) message).getPermitsAcquired()
+                )
+            );
+          }
+        } else if (!amRoot) {
+          messageDeliverator.send(
+              new Detect(
+                  message.getSrc(),
+                  this.parentId,
+                  this.round,
+                  ((Detect) message).getPermitsAcquired()
+              )
+          );
+        }
         break;
       case RoundFull:
         // either we are in the last round and are the root
@@ -218,35 +255,6 @@ public class GenericNode implements DistributedRateLimiter {
     }
 
     return CompletableFuture.completedFuture(null);
-  }
-
-  private void handleDetectMessage(Detect message, boolean amRoot, boolean graphBelowIsFull) {
-    if (!this.selfPermitAllocated) { 
-      this.selfPermitAllocated = true;
-      notifyParentIfAny(message);
-    } else if (!graphBelowIsFull) {
-      Optional<Long> maybeUnfilledChild = getUnfilledChild();
-
-      if (maybeUnfilledChild.isPresent()) {
-        messageDeliverator.send(
-            new Detect(
-                message.getSrc(),
-                maybeUnfilledChild.get(),
-                this.round,
-                message.getPermitsAcquired()
-            )
-        );
-      }
-    } else if (!amRoot) {
-      messageDeliverator.send(
-          new Detect(
-              message.getSrc(),
-              this.parentId,
-              this.round,
-              message.getPermitsAcquired()
-          )
-      );
-    }
   }
 
   private boolean isRoot() {

@@ -1,12 +1,10 @@
 package com.duprasville.limiters.treefill.domain;
 
 public class Acquire extends BaseMessage {
-    final long round;
-    final long permitsAcquired;
+    private final long permitsAcquired;
 
-    public Acquire(long src, long dst, long window, long round, long permitsAcquired) {
-        super(src, dst, window, MessageType.Acquire);
-        this.round = round;
+    public Acquire(long src, long dst, long round, long permitsAcquired) {
+        super(src, dst, round, MessageType.Acquire);
         this.permitsAcquired = permitsAcquired;
     }
 
@@ -18,5 +16,9 @@ public class Acquire extends BaseMessage {
                 ", round=" + getRound() +
                 ", permitsAcquired=" + permitsAcquired +
                 '}';
+    }
+
+    public long getPermitsAcquired() {
+        return this.permitsAcquired;
     }
 }

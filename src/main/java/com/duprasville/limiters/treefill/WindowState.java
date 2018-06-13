@@ -31,11 +31,11 @@ public class WindowState implements MessageProcessor {
         this.windowFrame = windowFrame;
     }
 
-    public boolean tryAcquire(long permits) {
-        receive(new Acquire(nodeConfig.nodeId, nodeConfig.nodeId, windowFrame, 0L, permits));
-        sendInform(0L, "Woot!!");
-        return true;
-    }
+//    public boolean tryAcquire(long permits) {
+//        receive(new Acquire(nodeConfig.nodeId, nodeConfig.nodeId, windowFrame, 0L, permits));
+//        sendInform(0L, "Woot!!");
+//        return true;
+//    }
 
     @Override
     public void process(Acquire acquire) {
