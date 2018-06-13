@@ -7,11 +7,7 @@ import java.util.logging.Logger;
 import com.duprasville.limiters.api.DistributedRateLimiter;
 import com.duprasville.limiters.api.Message;
 import com.duprasville.limiters.api.MessageDeliverator;
-import com.duprasville.limiters.treefill.domain.Acquire;
-import com.duprasville.limiters.treefill.domain.ChildFull;
-import com.duprasville.limiters.treefill.domain.CloseWindow;
-import com.duprasville.limiters.treefill.domain.Detect;
-import com.duprasville.limiters.treefill.domain.RoundFull;
+import com.duprasville.limiters.treefill.domain.*;
 
 public class GenericNode implements DistributedRateLimiter {
   private final Logger logger;
@@ -133,7 +129,8 @@ public class GenericNode implements DistributedRateLimiter {
   }
 
   @Override
-  public CompletableFuture<Void> receive(Message message) {
+  public CompletableFuture<Void> receive(Message msg) {
+    TreeFillMessage message = (TreeFillMessage)msg;
     logger.info("receive(): " + message.toString());
 
     boolean areChildrenFull = isGraphBelowFull();

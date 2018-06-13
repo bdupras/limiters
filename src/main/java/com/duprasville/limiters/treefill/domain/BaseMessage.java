@@ -1,8 +1,6 @@
 package com.duprasville.limiters.treefill.domain;
 
-import com.duprasville.limiters.api.Message;
-
-abstract class BaseMessage implements Message {
+abstract class BaseMessage implements TreeFillMessage {
   private final long src;
   private final long dst;
   private final long round;
