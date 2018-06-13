@@ -168,9 +168,8 @@ class WindowState {
       case Acquire:
         long permitsAcquired = ((Acquire) message).getPermitsAcquired();
 
-        if ((this.permitCounter + permitsAcquired) < this.shareThisRound) {
-          this.permitCounter += permitsAcquired;
-        } else if (this.permitCounter >= this.shareThisRound) {
+        this.permitCounter += permitsAcquired;
+        if (this.permitCounter >= this.shareThisRound) {
 
           // we need to allow more collection of permits locally
           this.permitCounter = 0;
