@@ -1,5 +1,6 @@
 package com.duprasville.limiters;
 
+@FunctionalInterface
 public interface DistributedRateLimiter {
     boolean tryAcquire(long permits);
 
