@@ -11,7 +11,7 @@ import com.duprasville.limiters.treefill.domain.Inform;
 import com.duprasville.limiters.treefill.domain.RoundFull;
 import com.duprasville.limiters.util.SerialExecutor;
 
-public class WindowState implements MessageReceiver, MessageProcessor {
+public class WindowState implements MessageProcessor {
     private final MessageDeliverator messageDeliverator;
     private final long windowFrame;
     private final WindowConfig windowConfig;
@@ -62,7 +62,7 @@ public class WindowState implements MessageReceiver, MessageProcessor {
         System.out.println(roundFull.toString());
     }
 
-    @Override
+//    @Override
     public void receive(Message message) {
         messageExecutor.execute(() -> this.process(message));
     }

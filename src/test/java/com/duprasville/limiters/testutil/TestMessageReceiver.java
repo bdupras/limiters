@@ -10,7 +10,7 @@ import com.duprasville.limiters.treefill.domain.RoundFull;
 
 import java.util.function.Consumer;
 
-public class TestMessageReceiver implements MessageReceiver, MessageProcessor {
+public class TestMessageReceiver implements MessageProcessor {
     Consumer<Acquire> onAcquire = (msg) -> {};
     Consumer<Detect> onDetect = (msg) -> {};
     Consumer<ChildFull> onFull = (msg) -> {};
@@ -37,7 +37,7 @@ public class TestMessageReceiver implements MessageReceiver, MessageProcessor {
         this.onInform = onInform;
     }
 
-    @Override
+//    @Override
     public void receive(Message message) {
         process(message);
     }

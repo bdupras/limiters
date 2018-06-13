@@ -47,49 +47,42 @@ public class GenericNodeTest {
   }
 
   @Test
-  void testWithTwoNodesAndFourPermitsAllowed() {
-    GenericNode node = new GenericNode(1, 2, 4, false, mockMessageDeliverator);
+  void testWithOneNodeAndTwoPermitsAllowed() {
+    GenericNode node = new GenericNode(1, 1, 2, false, mockMessageDeliverator);
     mockMessageDeliverator.addNode(node);
     node.acquire();
+    // because more permits were requested than there is space per round (with one active node),
+    // we need to advance the round after we have recorded W / (2^(round - 1) * N) permits
     assert (node.round == 2);
   }
 
-//  @Test
-//  void testWithThreeNodesAndFourPermitsAllowed() {
-//    GenericNode root = new GenericNode(1, 3, 4, true, mockMessageDeliverator);
-//    mockMessageDeliverator.addNode(root);
-//    GenericNode leftChild = new GenericNode(2, 3, 4, false, mockMessageDeliverator);
-//    mockMessageDeliverator.addNode(leftChild);
-//    GenericNode rightChild = new GenericNode(3, 3, 4, false, mockMessageDeliverator);
-//    mockMessageDeliverator.addNode(rightChild);
-//
-//    leftChild.acquire();
-//
-//    assert (root.windowOpen);
-//    assert (leftChild.windowOpen);
-//    assert (rightChild.windowOpen);
-//
-//    leftChild.acquire();
-//
-//    assert (root.windowOpen);
-//    assert (leftChild.windowOpen);
-//    assert (rightChild.windowOpen);
-//
-//    leftChild.acquire();
-//
-//    assert (root.windowOpen);
-//    assert (leftChild.windowOpen);
-//    assert (rightChild.windowOpen);
-//
-//    leftChild.acquire();
-////  WHAT SHOULD HAPPEN HERE:
-  /// IF WE ARE ROOT AND WE KNOW OUR CHILDREN ARE FULL WE NEED TO CLOSE THE WINDOW REGARDLESS OF
-  // WHETHER MAX PERMITS W IS REACHED SINCE THAT IS CLUSTER CAPACITY
-  // I ALSO WANT TO REEVALUATE HOW WE PICK THE NUMBER OF DETECTS / PERMITS ALLOWED PER NODE
-//    assert (!root.windowOpen);
-//    assert (!leftChild.windowOpen);
-//    assert (!rightChild.windowOpen);
-//  }
+  @Test
+  void testWithThreeNodesAndThreePermitsAllowed() {
+    GenericNode root = new GenericNode(1, 3, 3, true, mockMessageDeliverator);
+    mockMessageDeliverator.addNode(root);
+    GenericNode leftChild = new GenericNode(2, 3, 3, false, mockMessageDeliverator);
+    mockMessageDeliverator.addNode(leftChild);
+    GenericNode rightChild = new GenericNode(3, 3, 3, false, mockMessageDeliverator);
+    mockMessageDeliverator.addNode(rightChild);
+
+    leftChild.acquire();
+
+    assert (root.windowOpen);
+    assert (leftChild.windowOpen);
+    assert (rightChild.windowOpen);
+
+    leftChild.acquire();
+
+    assert (root.windowOpen);
+    assert (leftChild.windowOpen);
+    assert (rightChild.windowOpen);
+
+    leftChild.acquire();
+
+    assert (!root.windowOpen);
+    assert (!leftChild.windowOpen);
+    assert (!rightChild.windowOpen);
+  }
 
   class MockMessageDeliverator implements MessageDeliverator {
     public List<Message> messagesSent = new ArrayList<>();

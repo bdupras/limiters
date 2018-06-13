@@ -30,8 +30,9 @@ public class GenericNode implements DistributedRateLimiter {
   private long permitCounter = 0;
 
   boolean windowOpen = true;
-  int round = 1; // begin at one
+  int round = 1; // begin at one according to the paper
   boolean selfPermitAllocated;
+  boolean isThisLastRound;
 
   GenericNode(int id, int N, int W, boolean hasChildren, MessageDeliverator m) {
     this.id = id;
@@ -40,6 +41,8 @@ public class GenericNode implements DistributedRateLimiter {
     this.hasChildren = hasChildren;
     // if we are the root, parentId is 0, which is fine since node ids begin at 1
     this.parentId = id >> 1;
+
+    this.isThisLastRound = false;
 
     if (this.hasChildren) {
       this.childPermitsAllocated = new boolean[2];
@@ -55,7 +58,12 @@ public class GenericNode implements DistributedRateLimiter {
 
   private void resetThisNode() {
     this.shareThisRound =
-        (int) (this.W / (((long) Math.pow(2, Math.abs(this.round - 1))) * this.N));
+        (int) (this.W / ((long) Math.pow(2,this.round) * this.N));
+
+    if (this.shareThisRound == 0) {
+      this.isThisLastRound = true;
+      this.shareThisRound = 1;
+    }
 
     this.selfPermitAllocated = false;
     this.permitCounter = 0;
@@ -73,23 +81,27 @@ public class GenericNode implements DistributedRateLimiter {
 
   @Override
   public CompletableFuture<Boolean> acquire() {
-    if (this.windowOpen) {
+    if (this.windowOpen && (this.shareThisRound > 0)) {
       logger.info(
           "WINDOW IS OPEN! " +
               "acquire(1) on node=" + this.id +
               "; shareThisRound=" + this.shareThisRound +
               "; round=" + this.round +
-              "; permitCounter=" + this.permitCounter
+              "; permitCounter=" + this.permitCounter +
+              "; isThisLastRound=" + this.isThisLastRound
       );
 
       // enqueue(Detect d) -- on ourselves
       if ((this.permitCounter + 1) <= this.shareThisRound) {
         this.permitCounter++;
-        handleDetectMessage(new Detect(this.id, this.id, this.round, this.permitCounter), isRoot(), isGraphBelowFull());
+        handleDetectMessage(
+            new Detect(this.id, this.id, this.round, this.permitCounter),
+            isRoot(),
+            isGraphBelowFull()
+        );
         return CompletableFuture.completedFuture(true);
       } else if (((this.permitCounter + 1) > this.shareThisRound) &&
-          ((this.permitCounter + 1) <= this.W) &&
-          (this.N > this.W)) {
+          ((this.permitCounter + 1) <= this.W) || (this.N > this.W)) {
         // we can potentially reshuffle
         messageDeliverator.send(
             new Detect(
@@ -100,19 +112,15 @@ public class GenericNode implements DistributedRateLimiter {
             )
         );
         return CompletableFuture.completedFuture(true);
-      } else {
-        logger.info("too many messages; RATE LIMIT REACHED!");
-        if (this.windowOpen) {
-          messageDeliverator.send(
-              new RoundFull(
-                  this.id,
-                  this.id,
-                  this.round
-              )
-          );
-        }
-        return CompletableFuture.completedFuture(false);
       }
+    } else if (isRoot()) {
+      messageDeliverator.send(
+          new CloseWindow(
+              this.id,
+              this.parentId,
+              this.round
+          )
+      );
     }
 
     // p + r > w_i:
@@ -139,7 +147,7 @@ public class GenericNode implements DistributedRateLimiter {
         // either we are in the last round and are the root
         // so we send ourselves a closeWindow, OR
         // we advance to the next round
-        if (amRoot && (this.permitCounter == this.shareThisRound)) {
+        if (amRoot && this.isThisLastRound) {
           messageDeliverator.send(
               new CloseWindow(
                   this.id,
@@ -184,7 +192,8 @@ public class GenericNode implements DistributedRateLimiter {
               " is not currently a child of " + this.id);
         }
 
-        if (areChildrenFull) {
+        // we have just changed our view of the graph below's state
+        if (isGraphBelowFull()) {
           if (!amRoot) {
             messageDeliverator.send(
                 new ChildFull(
@@ -212,9 +221,9 @@ public class GenericNode implements DistributedRateLimiter {
   }
 
   private void handleDetectMessage(Detect message, boolean amRoot, boolean graphBelowIsFull) {
-    if (!this.selfPermitAllocated && !this.hasChildren) {
+    if (!this.selfPermitAllocated) { 
       this.selfPermitAllocated = true;
-      notifyParentOrIncrementGlobalRound();
+      notifyParentIfAny(message);
     } else if (!graphBelowIsFull) {
       Optional<Long> maybeUnfilledChild = getUnfilledChild();
 
@@ -235,14 +244,6 @@ public class GenericNode implements DistributedRateLimiter {
               this.parentId,
               this.round,
               message.getPermitsAcquired()
-          )
-      );
-    } else /*if (amRoot && graphBelowIsFull)*/ {
-      messageDeliverator.send(
-          new RoundFull(
-              this.id,
-              this.id,
-              this.round
           )
       );
     }
@@ -299,12 +300,12 @@ public class GenericNode implements DistributedRateLimiter {
     }
   }
 
-  private void notifyParentOrIncrementGlobalRound() {
+  private void notifyParentIfAny(Message message) {
     if (!isRoot()) {
       messageDeliverator.send(
           new ChildFull(this.id, this.parentId, this.round)
       );
-    } else { // we are the root
+    } else if (message.getSrc() == this.id) {
       messageDeliverator.send(
           new RoundFull(
               this.id,
