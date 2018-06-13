@@ -77,5 +77,33 @@ public class FirstIntegFeatureTest {
     Assertions.assertFalse(deliverator.acquireSingle(2), "Should have failed to acquire but actually acquired");
     Assertions.assertFalse(deliverator.acquireSingle(3), "Should have failed to acquire but actually acquired");
   }
+  
+  //NO time advancement here, and exhaust nodes perfectly (not realistic but a very basic start test)
+  @Test
+  void testAllFromOneNode() throws ExecutionException, InterruptedException {
+    //Round 1
+    deliverator.acquireOrFailSynchronous(2, 4);
+    deliverator.acquireOrFailSynchronous(2, 4);
+    deliverator.acquireOrFailSynchronous(2, 4);
 
+    //Round 2
+    deliverator.acquireOrFailSynchronous(2, 2);
+    deliverator.acquireOrFailSynchronous(2, 2);
+    deliverator.acquireOrFailSynchronous(2, 2);
+
+    //Round 3
+    deliverator.acquireOrFailSynchronous(2, 1);
+    deliverator.acquireOrFailSynchronous(2, 1);
+    deliverator.acquireOrFailSynchronous(2, 1);
+
+    //Round 4
+    deliverator.acquireOrFailSynchronous(2, 1);
+    deliverator.acquireOrFailSynchronous(2, 1);
+    deliverator.acquireOrFailSynchronous(2, 1);
+
+    //assert EVERY node is now rate limited
+    Assertions.assertFalse(deliverator.acquireSingle(1), "Should have failed to acquire but actually acquired");
+    Assertions.assertFalse(deliverator.acquireSingle(2), "Should have failed to acquire but actually acquired");
+    Assertions.assertFalse(deliverator.acquireSingle(3), "Should have failed to acquire but actually acquired");
+  }
 }
