@@ -147,6 +147,26 @@ public class TreeFillRateLimiterTest {
     run12PermitGraph(acquiringNode);
   }
 
+  @Test
+  void testNodesWithExtraAcquiresWhenRoundIncrements() {
+    List<TreeFillRateLimiter> nodes = buildGraph(3, 12);
+
+    TreeFillRateLimiter node1 = nodes.get(1);
+    TreeFillRateLimiter node2 = nodes.get(2);
+
+    for (int i = 0; i<4; i++) {
+      node1.acquire();
+    }
+
+    node2.acquire();
+
+    node1.acquire();
+    node1.acquire(); // round full with one left at node2
+
+    assertEquals(node2.currentWindow().round, 2);
+    assertTrue(node2.currentWindow().selfPermitAllocated);
+  }
+
   private void run12PermitGraph(TreeFillRateLimiter acquiringNode) {
     acquiringNode.acquire();
     acquiringNode.acquire();

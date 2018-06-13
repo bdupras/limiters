@@ -91,12 +91,13 @@ class WindowState {
     }
 
     this.selfPermitAllocated = false;
-    this.permitCounter = 0;
 
     if (this.hasChildren) {
       childPermitsAllocated[0] = false;
       childPermitsAllocated[1] = false;
     }
+
+    handleExtraPermitsAcquiredThisRound(this.id);
   }
 
   public CompletableFuture<Boolean> acquire() {
@@ -169,22 +170,10 @@ class WindowState {
         long permitsAcquired = ((Acquire) message).getPermitsAcquired();
 
         this.permitCounter += permitsAcquired;
-        if (this.permitCounter >= this.shareThisRound) {
-
-          // we need to allow more collection of permits locally
-          this.permitCounter = 0;
-
-          messageDeliverator.send(
-              new Detect(
-                  message.getSrc(),
-                  this.id,
-                  this.round,
-                  permitsAcquired
-              )
-          );
-        }
+        handleExtraPermitsAcquiredThisRound(message.getSrc());
 
         break;
+
       case Detect:
         if (!this.selfPermitAllocated) {
           this.selfPermitAllocated = true;
@@ -214,6 +203,7 @@ class WindowState {
           );
         }
         break;
+
       case RoundFull:
         // either we are in the last round and are the root
         // so we send ourselves a closeWindow, OR
@@ -230,6 +220,7 @@ class WindowState {
           advanceRound();
         }
         break;
+
       case CloseWindow:
         this.windowOpen = false;
 
@@ -251,6 +242,7 @@ class WindowState {
           );
         }
         break;
+
       case ChildFull:
         long idOfFullChild = message.getSrc();
 
@@ -284,11 +276,29 @@ class WindowState {
           }
         }
         break;
+
       default:
         throw new UnsupportedOperationException("oops");
     }
 
     return CompletableFuture.completedFuture(null);
+  }
+
+  private void handleExtraPermitsAcquiredThisRound(long messageSrc) {
+    while (this.permitCounter >= this.shareThisRound) {
+
+      // we need to allow more collection of permits locally
+      this.permitCounter -= this.shareThisRound;
+
+      messageDeliverator.send(
+          new Detect(
+              messageSrc,
+              this.id,
+              this.round,
+              this.shareThisRound
+          )
+      );
+    }
   }
 
   private boolean isRoot() {
