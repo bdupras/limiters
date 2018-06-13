@@ -89,7 +89,8 @@ public class TreeFillRateLimiter implements DistributedRateLimiter {
                                     this.nodeId,
                                     this.clusterSize,
                                     this.permitsPerSecond,
-                                    messageDeliverator
+                                    this.messageDeliverator,
+                                    this.executor
                             ));
         } else {
             return WindowState.NIL_WINDOW;

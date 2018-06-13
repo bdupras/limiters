@@ -3,17 +3,20 @@ package com.duprasville.limiters.treefill;
 import com.duprasville.limiters.api.Message;
 import com.duprasville.limiters.api.MessageDeliverator;
 import com.duprasville.limiters.treefill.domain.*;
+import com.duprasville.limiters.util.SerialExecutor;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.logging.Logger;
 
 class WindowState {
   // Used to receive & throw away very delayed messages - better than mucking with Option<WindowState>
   public static final WindowState NIL_WINDOW =
-          new WindowState(1, 1, 1, (message) -> CompletableFuture.completedFuture(null));
+          new WindowState(1, 1, 1, (message) -> CompletableFuture.completedFuture(null), (e) -> {});
 
   private final Logger logger;
+  private final SerialExecutor messageExecutor;
 
   private final long id;
   private final long parentId;
@@ -45,12 +48,14 @@ class WindowState {
     }
   }
 
-  public WindowState(long id, long N, long W, MessageDeliverator m) {
+  public WindowState(long id, long N, long W, MessageDeliverator m, Executor executor) {
     this.id = id;
     this.N = N;
 
     assertWSuitable(N, W);
     this.W = W;
+
+    this.messageExecutor = new SerialExecutor(executor);
 
     this.hasChildren = (N > 1) && (this.id <= (N / 2));
     // if we are the root, parentId is 0, which is fine since node ids begin at 1
@@ -86,10 +91,6 @@ class WindowState {
       childPermitsAllocated[0] = false;
       childPermitsAllocated[1] = false;
     }
-  }
-
-  public Long getId() {
-    return this.id;
   }
 
   public CompletableFuture<Boolean> acquire() {
@@ -147,6 +148,11 @@ class WindowState {
   }
 
   CompletableFuture<Void> receive(TreeFillMessage message) {
+    messageExecutor.execute(() -> process(message));
+    return CompletableFuture.completedFuture(null);
+  }
+
+    CompletableFuture<Void> process(TreeFillMessage message) {
     logger.info("receive(): " + message.toString());
 
     boolean areChildrenFull = isGraphBelowFull();

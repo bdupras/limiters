@@ -4,6 +4,7 @@ import com.duprasville.limiters.api.DistributedRateLimiter;
 import com.duprasville.limiters.api.DistributedRateLimiters;
 import com.duprasville.limiters.api.TreeFillConfig;
 import com.duprasville.limiters.integration.proxies.ProxyMessageDeliverator;
+import com.duprasville.limiters.testutil.SameThreadExecutorService;
 import com.duprasville.limiters.testutil.TestTicker;
 import com.google.common.base.Ticker;
 import org.junit.jupiter.api.Assertions;
@@ -12,7 +13,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 public class EvenRoundsNoTickerFeatureTest {
 
@@ -33,7 +33,7 @@ public class EvenRoundsNoTickerFeatureTest {
   @BeforeEach
   void init() {
     this.ticker = new TestTicker(0L);
-    this.executor = Executors.newSingleThreadExecutor();
+    this.executor = new SameThreadExecutorService();
     this.deliverator = new ProxyMessageDeliverator();
 
     treeNode1 = DistributedRateLimiters.treefill(new TreeFillConfig(1, 3, rate), ticker, executor, deliverator);

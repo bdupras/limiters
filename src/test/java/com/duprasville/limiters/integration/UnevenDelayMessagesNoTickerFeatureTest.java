@@ -1,19 +1,18 @@
 package com.duprasville.limiters.integration;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-
 import com.duprasville.limiters.api.DistributedRateLimiter;
 import com.duprasville.limiters.api.DistributedRateLimiters;
 import com.duprasville.limiters.api.TreeFillConfig;
 import com.duprasville.limiters.integration.proxies.DelayedProxyMsgDeliverator;
+import com.duprasville.limiters.testutil.SameThreadExecutorService;
 import com.duprasville.limiters.testutil.TestTicker;
 import com.google.common.base.Ticker;
-
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 
 public class UnevenDelayMessagesNoTickerFeatureTest {
 
@@ -34,7 +33,7 @@ public class UnevenDelayMessagesNoTickerFeatureTest {
   @BeforeEach
   void init() {
     this.ticker = new TestTicker(0L);
-    this.executor = Executors.newSingleThreadExecutor();
+    this.executor = new SameThreadExecutorService();
     this.deliverator = new DelayedProxyMsgDeliverator();
 
     treeNode1 = DistributedRateLimiters.treefill(new TreeFillConfig(1, 3, rate), ticker, executor, deliverator);
