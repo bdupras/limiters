@@ -1,6 +1,6 @@
 package com.duprasville.limiters.treefill.domain;
 
-public class Acquire extends BaseMessage {
+public class Acquire extends TreeFillMessage {
     private final long permitsAcquired;
 
     public Acquire(long src, long dst, long round, long permitsAcquired) {
@@ -13,7 +13,7 @@ public class Acquire extends BaseMessage {
         return this.getClass().getSimpleName() + "{" +
                 "src=" + getSrc() +
                 ", dst=" + getDst() +
-                ", round=" + getRound() +
+                ", round=" + round +
                 ", permitsAcquired=" + permitsAcquired +
                 '}';
     }

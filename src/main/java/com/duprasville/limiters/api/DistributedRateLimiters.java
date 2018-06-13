@@ -1,12 +1,11 @@
 package com.duprasville.limiters.api;
 
-import java.util.Random;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-
-import com.duprasville.limiters.treefill.GenericNode;
+import com.duprasville.limiters.treefill.TreeFillRateLimiter;
 import com.google.common.base.Ticker;
 import com.google.common.util.concurrent.ForkedRateLimiter;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 public class DistributedRateLimiters {
   public static final DistributedRateLimiter UNLIMITED = (permits) -> CompletableFuture.completedFuture(true);
@@ -16,10 +15,9 @@ public class DistributedRateLimiters {
       TreeFillConfig treeFillConfig,
       Ticker ticker,
       Executor executor,
-      MessageDeliverator messageDeliverator,
-      Random random
+      MessageDeliverator messageDeliverator
   ) {
-    return new GenericNode(treeFillConfig.nodeId, treeFillConfig.clusterSize, treeFillConfig.permitsPerSecond, messageDeliverator);
+    return new TreeFillRateLimiter(treeFillConfig.nodeId, treeFillConfig.clusterSize, treeFillConfig.permitsPerSecond, ticker, executor, messageDeliverator);
   }
 
   public static DistributedRateLimiter divided(
@@ -27,7 +25,18 @@ public class DistributedRateLimiters {
       Ticker ticker
   ) {
     double localPermitsPerSecond = config.permitsPerSecond / (double) config.clusterSize;
-    ForkedRateLimiter forkedRateLimiter = ForkedRateLimiter.create(localPermitsPerSecond, ticker);
-    return (permits) -> CompletableFuture.completedFuture(forkedRateLimiter.tryAcquire((int) permits));
+    final ForkedRateLimiter forkedRateLimiter = ForkedRateLimiter.create(localPermitsPerSecond, ticker);
+
+    return new DistributedRateLimiter() {
+      @Override
+      public CompletableFuture<Boolean> acquire(long permits) {
+        return CompletableFuture.completedFuture(forkedRateLimiter.tryAcquire((int) permits));
+      }
+
+      @Override
+      public void setRate(long permitsPerSecond) {
+        forkedRateLimiter.setRate(permitsPerSecond);
+      }
+    };
   }
 }

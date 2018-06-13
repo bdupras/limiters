@@ -1,6 +1,6 @@
 package com.duprasville.limiters.treefill.domain;
 
-public class CloseWindow extends BaseMessage {
+public class CloseWindow extends TreeFillMessage {
 
   public CloseWindow(long src, long dst, long round) {
     super(src, dst, round, MessageType.CloseWindow);
@@ -11,7 +11,7 @@ public class CloseWindow extends BaseMessage {
     return this.getClass().getSimpleName() + "{" +
         "src=" + getSrc() +
         ", dst=" + getDst() +
-        ", round=" + getRound() +
+        ", round=" + round +
         '}';
   }
 }

@@ -1,9 +1,9 @@
 package com.duprasville.limiters.treefill.domain;
 
-public class Inform extends BaseMessage {
+public class Inform extends TreeFillMessage {
     final String msg;
-    public Inform(long src, long dst, long window, String msg) {
-        super(src, dst, window, MessageType.Inform);
+    public Inform(long src, long dst, long round, String msg) {
+        super(src, dst, round, MessageType.Inform);
         this.msg = msg;
     }
 

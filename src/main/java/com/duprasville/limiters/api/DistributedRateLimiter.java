@@ -16,5 +16,7 @@ public interface DistributedRateLimiter {
     default CompletableFuture<Void> receive(Message message) {
         return CompletableFuture.completedFuture(null);
     }
+
+    default void setRate(long permitsPerSecond) { }
 }
 

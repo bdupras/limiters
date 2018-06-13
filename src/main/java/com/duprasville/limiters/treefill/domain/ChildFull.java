@@ -1,6 +1,6 @@
 package com.duprasville.limiters.treefill.domain;
 
-public class ChildFull extends BaseMessage {
+public class ChildFull extends TreeFillMessage {
     private final long round;
 
     public ChildFull(long src, long dst, long round) {
@@ -13,7 +13,7 @@ public class ChildFull extends BaseMessage {
         return this.getClass().getSimpleName() + "{" +
                 "src=" + getSrc() +
                 ", dst=" + getDst() +
-                ", round=" + getRound() +
+                ", round=" + round +
                 '}';
     }
 }
