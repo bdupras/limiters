@@ -15,6 +15,9 @@ import com.duprasville.limiters.treefill.domain.Detect;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 
 public class GenericNodeTest {
   private MockMessageDeliverator mockMessageDeliverator;
@@ -27,7 +30,7 @@ public class GenericNodeTest {
   @Test
   void testAcquire() throws ExecutionException, InterruptedException {
     GenericNode node = new GenericNode(1, 1, 10, false, mockMessageDeliverator);
-    assert (node.acquire().get());
+    assertTrue(node.acquire().get());
   }
 
   @Test
@@ -35,15 +38,15 @@ public class GenericNodeTest {
     GenericNode node = new GenericNode(1, 2, 4, false, mockMessageDeliverator);
     node.acquire();
 
-    assert (!mockMessageDeliverator.messagesSent.isEmpty());
-    assert (node.round == 1); // round has advanced
+    assertTrue(!mockMessageDeliverator.messagesSent.isEmpty());
+    assertEquals(node.round, 1); // round has advanced
   }
 
   @Test
   void testReceive() throws ExecutionException, InterruptedException {
     GenericNode node = new GenericNode(1, 1, 10, false, mockMessageDeliverator);
     node.receive(new Detect(1, 1, 0, 1));
-    assert (node.selfPermitAllocated);
+    assertTrue(node.selfPermitAllocated);
   }
 
   @Test
@@ -53,11 +56,11 @@ public class GenericNodeTest {
     node.acquire();
     // because more permits were requested than there is space per round (with one active node),
     // we need to advance the round after we have recorded W / (2^(round - 1) * N) permits
-    assert (node.round == 2);
+    assertTrue(node.round == 2);
 
     node.acquire();
     // at this point we have exhausted the amount of requested rate limit quota
-    assert (!node.windowOpen);
+    assertTrue(!node.windowOpen);
   }
 
   private List<GenericNode> buildGraph(int N, int W) {
@@ -91,19 +94,19 @@ public class GenericNodeTest {
     }
 
     acquiringNode.acquire();
-    assert (root.windowOpen);
-    assert (leftChild.windowOpen);
-    assert (rightChild.windowOpen);
+    assertTrue(root.windowOpen);
+    assertTrue(leftChild.windowOpen);
+    assertTrue(rightChild.windowOpen);
 
     acquiringNode.acquire();
-    assert (root.windowOpen);
-    assert (leftChild.windowOpen);
-    assert (rightChild.windowOpen);
+    assertTrue(root.windowOpen);
+    assertTrue(leftChild.windowOpen);
+    assertTrue(rightChild.windowOpen);
 
     acquiringNode.acquire();
-    assert (!root.windowOpen);
-    assert (!leftChild.windowOpen);
-    assert (!rightChild.windowOpen);
+    assertTrue(!root.windowOpen);
+    assertTrue(!leftChild.windowOpen);
+    assertTrue(!rightChild.windowOpen);
 
   }
 
@@ -121,40 +124,52 @@ public class GenericNodeTest {
   void testSendingToLeftWith12PermitsAndThreeNodes() {
     List<GenericNode> nodes = buildGraph(3, 12);
 
-    GenericNode root = nodes.get(0);
-    GenericNode leftChild = nodes.get(1);
+    GenericNode acquiringNode = nodes.get(0);
 
-    leftChild.acquire();
-    leftChild.acquire();
-    leftChild.acquire();
-    leftChild.acquire();
-    leftChild.acquire();
+    run12PermitGraph(acquiringNode);
+  }
 
-    assert (root.windowOpen);
+  @Test
+  void testSendingToLeftWith12PermitsAndThreeNodesWithLeftNode() {
+    List<GenericNode> nodes = buildGraph(3, 12);
 
-    assert (root.round == 1);
+    GenericNode acquiringNode = nodes.get(1);
 
-    leftChild.acquire();
+    run12PermitGraph(acquiringNode);
+  }
 
-    assert (root.round == 2);
+  private void run12PermitGraph(GenericNode acquiringNode) {
+    acquiringNode.acquire();
+    acquiringNode.acquire();
+    acquiringNode.acquire();
+    acquiringNode.acquire();
+    acquiringNode.acquire();
 
-    leftChild.acquire();
-    leftChild.acquire();
+    assertTrue(acquiringNode.windowOpen);
 
-    assert (root.windowOpen);
+    assertEquals(acquiringNode.round, 1);
 
-    leftChild.acquire();
+    acquiringNode.acquire();
 
-    assert (root.round == 3);
+    assertEquals(acquiringNode.round, 2);
 
-    leftChild.acquire();
-    leftChild.acquire();
+    acquiringNode.acquire();
+    acquiringNode.acquire();
 
-    assert (root.windowOpen);
+    assertTrue(acquiringNode.windowOpen);
 
-    leftChild.acquire();
+    acquiringNode.acquire();
 
-    assert (!root.windowOpen);
+    assertEquals(acquiringNode.round, 3);
+
+    acquiringNode.acquire();
+    acquiringNode.acquire();
+
+    assertTrue(acquiringNode.windowOpen);
+
+    acquiringNode.acquire();
+
+    assertTrue(!acquiringNode.windowOpen);
   }
 
   class MockMessageDeliverator implements MessageDeliverator {

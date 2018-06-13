@@ -9,9 +9,9 @@ import com.duprasville.limiters.api.DistributedRateLimiter;
 import com.duprasville.limiters.api.DistributedRateLimiters;
 import com.duprasville.limiters.api.TreeFillConfig;
 import com.duprasville.limiters.integration.proxies.ProxyMessageDeliverator;
-
 import com.duprasville.limiters.testutil.TestTicker;
 import com.google.common.base.Ticker;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,9 +40,9 @@ public class FirstIntegFeatureTest {
     this.random = new Random(0xDEADBEEF);
     this.deliverator = new ProxyMessageDeliverator();
 
-    treeNode1 = DistributedRateLimiters.treefill(new TreeFillConfig(1, 3, 100), ticker, executor, deliverator, random);
-    treeNode2 = DistributedRateLimiters.treefill(new TreeFillConfig(2, 3, 100), ticker, executor, deliverator, random);
-    treeNode3 = DistributedRateLimiters.treefill(new TreeFillConfig(3, 3, 100), ticker, executor, deliverator, random);
+    treeNode1 = DistributedRateLimiters.treefill(new TreeFillConfig(1, 3, rate), ticker, executor, deliverator, random);
+    treeNode2 = DistributedRateLimiters.treefill(new TreeFillConfig(2, 3, rate), ticker, executor, deliverator, random);
+    treeNode3 = DistributedRateLimiters.treefill(new TreeFillConfig(3, 3, rate), ticker, executor, deliverator, random);
 
     deliverator.setNode(1, treeNode1);
     deliverator.setNode(2, treeNode2);
