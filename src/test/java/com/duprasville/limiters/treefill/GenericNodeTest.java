@@ -6,8 +6,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
+import com.duprasville.limiters.api.MessageDeliverator;
+import com.duprasville.limiters.api.Node;
 import com.duprasville.limiters.treefill.domain.Detect;
-import com.duprasville.limiters.treefill.domain.Message;
+import com.duprasville.limiters.api.Message;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

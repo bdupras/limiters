@@ -1,12 +1,12 @@
 package com.duprasville.limiters.testutil;
 
-import com.duprasville.limiters.treefill.MessageSender;
-import com.duprasville.limiters.treefill.domain.Message;
+import com.duprasville.limiters.api.MessageDeliverator;
+import com.duprasville.limiters.api.Message;
 
 import java.util.Random;
 import java.util.function.Consumer;
 
-public class TestMessageSender implements MessageSender {
+public class TestMessageSender implements MessageDeliverator {
     private final Random random;
     Consumer<Message> onSend = (msg) -> {};
 
@@ -23,8 +23,8 @@ public class TestMessageSender implements MessageSender {
         this.onSend = onSend;
     }
 
-    @Override
-    public long anyAvailableNode(long[] nodes) {
-        return nodes[random.nextInt(nodes.length)];
-    }
+    //@Override
+    //public long anyAvailableNode(long[] nodes) {
+    //    return nodes[random.nextInt(nodes.length)];
+    //}
 }

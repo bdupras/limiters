@@ -1,12 +1,12 @@
 package com.duprasville.limiters.util;
 
-import com.duprasville.limiters.treefill.domain.Detect;
-import com.duprasville.limiters.treefill.domain.ChildFull;
-import com.duprasville.limiters.treefill.domain.Message;
-import com.duprasville.limiters.treefill.domain.RoundFull;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import com.duprasville.limiters.api.Message;
+import com.duprasville.limiters.treefill.domain.ChildFull;
+import com.duprasville.limiters.treefill.domain.Detect;
+import com.duprasville.limiters.treefill.domain.RoundFull;
 
 public class MessageAppearance {
     static final Map<Class<? extends Message>, Double> colors = new HashMap<>();

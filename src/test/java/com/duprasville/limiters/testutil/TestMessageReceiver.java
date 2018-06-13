@@ -5,7 +5,7 @@ import com.duprasville.limiters.treefill.domain.Acquire;
 import com.duprasville.limiters.treefill.domain.Detect;
 import com.duprasville.limiters.treefill.domain.ChildFull;
 import com.duprasville.limiters.treefill.domain.Inform;
-import com.duprasville.limiters.treefill.domain.Message;
+import com.duprasville.limiters.api.Message;
 import com.duprasville.limiters.treefill.domain.RoundFull;
 
 import java.util.function.Consumer;

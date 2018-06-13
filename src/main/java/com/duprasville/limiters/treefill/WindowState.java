@@ -1,17 +1,18 @@
 package com.duprasville.limiters.treefill;
 
+import java.util.concurrent.Executor;
+
+import com.duprasville.limiters.api.Message;
+import com.duprasville.limiters.api.MessageDeliverator;
 import com.duprasville.limiters.treefill.domain.Acquire;
 import com.duprasville.limiters.treefill.domain.ChildFull;
 import com.duprasville.limiters.treefill.domain.Detect;
 import com.duprasville.limiters.treefill.domain.Inform;
-import com.duprasville.limiters.treefill.domain.Message;
 import com.duprasville.limiters.treefill.domain.RoundFull;
 import com.duprasville.limiters.util.SerialExecutor;
 
-import java.util.concurrent.Executor;
-
 public class WindowState implements MessageReceiver, MessageProcessor {
-    private final MessageSender messageSender;
+    private final MessageDeliverator messageDeliverator;
     private final long windowFrame;
     private final WindowConfig windowConfig;
     private final SerialExecutor messageExecutor;
@@ -20,13 +21,13 @@ public class WindowState implements MessageReceiver, MessageProcessor {
     public WindowState(
             WindowConfig windowConfig,
             Executor executor,
-            MessageSender messageSender,
+            MessageDeliverator messageDeliverator,
             long windowFrame
     ) {
         this.windowConfig = windowConfig;
         this.nodeConfig = windowConfig.nodeConfig;
         this.messageExecutor = new SerialExecutor(executor);
-        this.messageSender = messageSender;
+        this.messageDeliverator = messageDeliverator;
         this.windowFrame = windowFrame;
     }
 
@@ -67,6 +68,6 @@ public class WindowState implements MessageReceiver, MessageProcessor {
     }
 
     private void sendInform(long dst, String msg) {
-        messageSender.send(new Inform(nodeConfig.nodeId, dst, windowFrame, msg));
+        messageDeliverator.send(new Inform(nodeConfig.nodeId, dst, windowFrame, msg));
     }
 }

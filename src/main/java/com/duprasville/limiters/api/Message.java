@@ -1,4 +1,4 @@
-package com.duprasville.limiters.treefill.domain;
+package com.duprasville.limiters.api;
 
 public interface Message {
   long getSrc();

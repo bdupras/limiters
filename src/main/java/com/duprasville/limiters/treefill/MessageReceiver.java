@@ -1,6 +1,6 @@
 package com.duprasville.limiters.treefill;
 
-import com.duprasville.limiters.treefill.domain.Message;
+import com.duprasville.limiters.api.Message;
 
 @FunctionalInterface
 public interface MessageReceiver {

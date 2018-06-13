@@ -4,10 +4,12 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
+import com.duprasville.limiters.api.Message;
+import com.duprasville.limiters.api.MessageDeliverator;
+import com.duprasville.limiters.api.Node;
 import com.duprasville.limiters.treefill.domain.ChildFull;
 import com.duprasville.limiters.treefill.domain.CloseWindow;
 import com.duprasville.limiters.treefill.domain.Detect;
-import com.duprasville.limiters.treefill.domain.Message;
 import com.duprasville.limiters.treefill.domain.RoundFull;
 
 public class GenericNode implements Node {
