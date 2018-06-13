@@ -4,7 +4,6 @@ Not for public use. This is a protoyping repo for implementing various distribut
 
 The main focus right now is the treefill algorithm described in the paper ["An optimal distributed trigger counting algorithm for large-scale networked systems"][1].
 
-
 algorithms
 ----------
 
