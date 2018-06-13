@@ -85,7 +85,9 @@ public class GenericNode implements Node {
         this.permitCounter++;
         handleDetectMessage(new Detect(this.id, this.id, this.round, this.permitCounter), isRoot(), isGraphBelowFull());
         return CompletableFuture.completedFuture(true);
-      } else if (((this.permitCounter + 1) > this.shareThisRound) && ((this.permitCounter + 1) <= this.W)) {
+      } else if (((this.permitCounter + 1) > this.shareThisRound) &&
+          ((this.permitCounter + 1) <= this.W) &&
+          (this.N > this.W)) {
         // we can potentially reshuffle
         messageDeliverator.send(
             new Detect(
@@ -98,6 +100,15 @@ public class GenericNode implements Node {
         return CompletableFuture.completedFuture(true);
       } else {
         logger.info("too many messages; RATE LIMIT REACHED!");
+        if (this.windowOpen) {
+          messageDeliverator.send(
+              new RoundFull(
+                  this.id,
+                  this.id,
+                  this.round
+              )
+          );
+        }
         return CompletableFuture.completedFuture(false);
       }
     }

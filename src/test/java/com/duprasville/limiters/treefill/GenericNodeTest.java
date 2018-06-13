@@ -42,14 +42,14 @@ public class GenericNodeTest {
     node.receive(new Detect(1, 1, 0, 1));
     assert (node.selfPermitAllocated);
   }
-// oops broke this too, working on it
-//  @Test
-//  void testWithTwoNodesAndFourPermitsAllowed() {
-//    GenericNode node = new GenericNode(1, 2, 4, false, mockMessageDeliverator);
-//    mockMessageDeliverator.addNode(node);
-//    node.acquire();
-//    assert (!node.windowOpen);
-//  }
+
+  @Test
+  void testWithTwoNodesAndFourPermitsAllowed() {
+    GenericNode node = new GenericNode(1, 2, 4, false, mockMessageDeliverator);
+    mockMessageDeliverator.addNode(node);
+    node.acquire();
+    assert (node.round == 2);
+  }
 
 //  @Test
 //  void testWithThreeNodesAndFourPermitsAllowed() {
