@@ -40,9 +40,9 @@ public class UnevenDelayMessagesNoTickerFeatureTest {
     this.random = new Random(0xDEADBEEF);
     this.deliverator = new ProxyMessageDeliverator();
 
-    treeNode1 = DistributedRateLimiters.treefill(new TreeFillConfig(1, 3, 100), ticker, executor, deliverator, random);
-    treeNode2 = DistributedRateLimiters.treefill(new TreeFillConfig(2, 3, 100), ticker, executor, deliverator, random);
-    treeNode3 = DistributedRateLimiters.treefill(new TreeFillConfig(3, 3, 100), ticker, executor, deliverator, random);
+    treeNode1 = DistributedRateLimiters.treefill(new TreeFillConfig(1, 3, rate), ticker, executor, deliverator, random);
+    treeNode2 = DistributedRateLimiters.treefill(new TreeFillConfig(2, 3, rate), ticker, executor, deliverator, random);
+    treeNode3 = DistributedRateLimiters.treefill(new TreeFillConfig(3, 3, rate), ticker, executor, deliverator, random);
 
     deliverator.setNode(1, treeNode1);
     deliverator.setNode(2, treeNode2);
