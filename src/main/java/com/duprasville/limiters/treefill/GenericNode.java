@@ -7,7 +7,12 @@ import java.util.logging.Logger;
 import com.duprasville.limiters.api.DistributedRateLimiter;
 import com.duprasville.limiters.api.Message;
 import com.duprasville.limiters.api.MessageDeliverator;
-import com.duprasville.limiters.treefill.domain.*;
+import com.duprasville.limiters.treefill.domain.Acquire;
+import com.duprasville.limiters.treefill.domain.ChildFull;
+import com.duprasville.limiters.treefill.domain.CloseWindow;
+import com.duprasville.limiters.treefill.domain.Detect;
+import com.duprasville.limiters.treefill.domain.RoundFull;
+import com.duprasville.limiters.treefill.domain.TreeFillMessage;
 
 public class GenericNode implements DistributedRateLimiter {
   private final Logger logger;
@@ -31,10 +36,24 @@ public class GenericNode implements DistributedRateLimiter {
   boolean selfPermitAllocated;
   boolean isThisLastRound;
 
+  private void assertWSuitable(int N, int W) {
+    int r = W / N;
+    while ((r > 1) && (r % 2 == 0)) {
+      r = r >> 1;
+    }
+
+    if ((r != 1) || (W % N != 0)) {
+      throw new IllegalArgumentException("W must be N * a power of 2");
+    }
+  }
+
   GenericNode(int id, int N, int W, boolean hasChildren, MessageDeliverator m) {
     this.id = id;
     this.N = N;
+
+    assertWSuitable(N, W);
     this.W = W;
+
     this.hasChildren = hasChildren;
     // if we are the root, parentId is 0, which is fine since node ids begin at 1
     this.parentId = id >> 1;
@@ -130,7 +149,7 @@ public class GenericNode implements DistributedRateLimiter {
 
   @Override
   public CompletableFuture<Void> receive(Message msg) {
-    TreeFillMessage message = (TreeFillMessage)msg;
+    TreeFillMessage message = (TreeFillMessage) msg;
     logger.info("receive(): " + message.toString());
 
     boolean areChildrenFull = isGraphBelowFull();

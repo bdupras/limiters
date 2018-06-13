@@ -29,7 +29,7 @@ public class GenericNodeTest {
 
   @Test
   void testAcquire() throws ExecutionException, InterruptedException {
-    GenericNode node = new GenericNode(1, 1, 10, false, mockMessageDeliverator);
+    GenericNode node = new GenericNode(1, 1, 8, false, mockMessageDeliverator);
     assertTrue(node.acquire().get());
   }
 
@@ -44,7 +44,7 @@ public class GenericNodeTest {
 
   @Test
   void testReceive() throws ExecutionException, InterruptedException {
-    GenericNode node = new GenericNode(1, 1, 10, false, mockMessageDeliverator);
+    GenericNode node = new GenericNode(1, 1, 32, false, mockMessageDeliverator);
     node.receive(new Detect(1, 1, 0, 1));
     assertTrue(node.selfPermitAllocated);
   }
