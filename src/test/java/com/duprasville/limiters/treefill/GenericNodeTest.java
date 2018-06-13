@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import com.duprasville.limiters.api.MessageDeliverator;
@@ -100,11 +101,13 @@ public class GenericNodeTest {
     }
 
     @Override
-    public void send(Message message) {
+    public CompletableFuture<Void> send(Message message) {
       messagesSent.add(message);
       Node dest = nodesById.get(message.getDst());
 
-      if (dest != null) dest.receive(message);
+      if (dest != null) dest.receive(message).thenApply(s -> null);
+
+      return CompletableFuture.completedFuture(null);
     }
   }
 }
