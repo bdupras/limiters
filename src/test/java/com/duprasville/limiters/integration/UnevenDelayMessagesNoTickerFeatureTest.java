@@ -107,4 +107,28 @@ public class UnevenDelayMessagesNoTickerFeatureTest {
     Assertions.assertFalse(deliverator.acquireSingle(2), "Should have failed to acquire but actually acquired");
     Assertions.assertFalse(deliverator.acquireSingle(3), "Should have failed to acquire but actually acquired");
   }
+
+  @Test
+  void testOverLoadBottomNodes() throws ExecutionException, InterruptedException {
+    //Round 1 - total 20 leading to Round 3!!!  round 1 total 12, then 6
+    deliverator.acquireOrFailSynchronous(2, 6);
+    deliverator.acquireOrFailSynchronous(2, 7);
+    deliverator.acquireOrFailSynchronous(3, 7);
+    deliverator.releaseMessages();
+
+    //Round 2 virtually skipped
+
+    //Round 3
+    deliverator.acquireOrFailSynchronous(3, 3);
+    deliverator.acquireOrFailSynchronous(3, 1);
+    deliverator.acquireOrFailSynchronous(3, 1);
+    deliverator.releaseMessages();
+
+    //Round 4 virtually skipped
+
+    //assert EVERY node is now rate limited
+    Assertions.assertFalse(deliverator.acquireSingle(1), "Should have failed to acquire but actually acquired");
+    Assertions.assertFalse(deliverator.acquireSingle(2), "Should have failed to acquire but actually acquired");
+    Assertions.assertFalse(deliverator.acquireSingle(3), "Should have failed to acquire but actually acquired");
+  }
 }
