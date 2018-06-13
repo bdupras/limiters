@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class FirstIntegFeatureTest {
+public class UnevenRoundsNoTickerFeatureTest {
 
   private DistributedRateLimiter treeNode1;
   private DistributedRateLimiter treeNode2;
@@ -40,9 +40,9 @@ public class FirstIntegFeatureTest {
     this.random = new Random(0xDEADBEEF);
     this.deliverator = new ProxyMessageDeliverator();
 
-    treeNode1 = DistributedRateLimiters.treefill(new TreeFillConfig(1, 3, rate), ticker, executor, deliverator, random);
-    treeNode2 = DistributedRateLimiters.treefill(new TreeFillConfig(2, 3, rate), ticker, executor, deliverator, random);
-    treeNode3 = DistributedRateLimiters.treefill(new TreeFillConfig(3, 3, rate), ticker, executor, deliverator, random);
+    treeNode1 = DistributedRateLimiters.treefill(new TreeFillConfig(1, 3, 100), ticker, executor, deliverator, random);
+    treeNode2 = DistributedRateLimiters.treefill(new TreeFillConfig(2, 3, 100), ticker, executor, deliverator, random);
+    treeNode3 = DistributedRateLimiters.treefill(new TreeFillConfig(3, 3, 100), ticker, executor, deliverator, random);
 
     deliverator.setNode(1, treeNode1);
     deliverator.setNode(2, treeNode2);
@@ -52,7 +52,7 @@ public class FirstIntegFeatureTest {
   //NO time advancement here, and exhaust nodes perfectly (not realistic but a very basic start test)
   @Test
   void testStraightupBasicAcquire() throws ExecutionException, InterruptedException {
-    //Round 1
+    //Round 1 + additional
     deliverator.acquireOrFailSynchronous(1, 4);
     deliverator.acquireOrFailSynchronous(2, 4);
     deliverator.acquireOrFailSynchronous(3, 4);
@@ -77,33 +77,5 @@ public class FirstIntegFeatureTest {
     Assertions.assertFalse(deliverator.acquireSingle(2), "Should have failed to acquire but actually acquired");
     Assertions.assertFalse(deliverator.acquireSingle(3), "Should have failed to acquire but actually acquired");
   }
-  
-  //NO time advancement here, and exhaust nodes perfectly (not realistic but a very basic start test)
-  @Test
-  void testAllFromOneNode() throws ExecutionException, InterruptedException {
-    //Round 1
-    deliverator.acquireOrFailSynchronous(2, 4);
-    deliverator.acquireOrFailSynchronous(2, 4);
-    deliverator.acquireOrFailSynchronous(2, 4);
 
-    //Round 2
-    deliverator.acquireOrFailSynchronous(2, 2);
-    deliverator.acquireOrFailSynchronous(2, 2);
-    deliverator.acquireOrFailSynchronous(2, 2);
-
-    //Round 3
-    deliverator.acquireOrFailSynchronous(2, 1);
-    deliverator.acquireOrFailSynchronous(2, 1);
-    deliverator.acquireOrFailSynchronous(2, 1);
-
-    //Round 4
-    deliverator.acquireOrFailSynchronous(2, 1);
-    deliverator.acquireOrFailSynchronous(2, 1);
-    deliverator.acquireOrFailSynchronous(2, 1);
-
-    //assert EVERY node is now rate limited
-    Assertions.assertFalse(deliverator.acquireSingle(1), "Should have failed to acquire but actually acquired");
-    Assertions.assertFalse(deliverator.acquireSingle(2), "Should have failed to acquire but actually acquired");
-    Assertions.assertFalse(deliverator.acquireSingle(3), "Should have failed to acquire but actually acquired");
-  }
 }
