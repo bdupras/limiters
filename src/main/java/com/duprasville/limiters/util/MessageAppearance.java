@@ -1,9 +1,9 @@
 package com.duprasville.limiters.util;
 
-import com.duprasville.limiters.treefill.Detect;
-import com.duprasville.limiters.treefill.Full;
-import com.duprasville.limiters.treefill.Message;
-import com.duprasville.limiters.treefill.RoundFull;
+import com.duprasville.limiters.treefill.domain.Detect;
+import com.duprasville.limiters.treefill.domain.ChildFull;
+import com.duprasville.limiters.treefill.domain.Message;
+import com.duprasville.limiters.treefill.domain.RoundFull;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,7 +12,7 @@ public class MessageAppearance {
     static final Map<Class<? extends Message>, Double> colors = new HashMap<>();
     static {
         colors.put(Detect.class, lime());
-        colors.put(Full.class, orange());
+        colors.put(ChildFull.class, orange());
         colors.put(RoundFull.class, red());
     }
 

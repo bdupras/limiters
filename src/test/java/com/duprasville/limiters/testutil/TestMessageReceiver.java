@@ -1,13 +1,19 @@
 package com.duprasville.limiters.testutil;
 
 import com.duprasville.limiters.treefill.*;
+import com.duprasville.limiters.treefill.domain.Acquire;
+import com.duprasville.limiters.treefill.domain.Detect;
+import com.duprasville.limiters.treefill.domain.ChildFull;
+import com.duprasville.limiters.treefill.domain.Inform;
+import com.duprasville.limiters.treefill.domain.Message;
+import com.duprasville.limiters.treefill.domain.RoundFull;
 
 import java.util.function.Consumer;
 
 public class TestMessageReceiver implements MessageReceiver, MessageProcessor {
     Consumer<Acquire> onAcquire = (msg) -> {};
     Consumer<Detect> onDetect = (msg) -> {};
-    Consumer<Full> onFull = (msg) -> {};
+    Consumer<ChildFull> onFull = (msg) -> {};
     Consumer<RoundFull> onRoundFull = (msg) -> {};
     Consumer<Inform> onInform = (msg) -> {};
 
@@ -19,7 +25,7 @@ public class TestMessageReceiver implements MessageReceiver, MessageProcessor {
         this.onDetect = onDetect;
     }
 
-    public void onFull(Consumer<Full> onFull) {
+    public void onFull(Consumer<ChildFull> onFull) {
         this.onFull = onFull;
     }
 
@@ -52,8 +58,8 @@ public class TestMessageReceiver implements MessageReceiver, MessageProcessor {
     }
 
     @Override
-    public void process(Full full) {
-        onFull.accept(full);
+    public void process(ChildFull childFull) {
+        onFull.accept(childFull);
     }
 
     @Override

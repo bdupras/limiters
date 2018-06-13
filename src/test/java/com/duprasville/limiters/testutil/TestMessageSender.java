@@ -1,7 +1,7 @@
 package com.duprasville.limiters.testutil;
 
 import com.duprasville.limiters.treefill.MessageSender;
-import com.duprasville.limiters.treefill.Message;
+import com.duprasville.limiters.treefill.domain.Message;
 
 import java.util.Random;
 import java.util.function.Consumer;

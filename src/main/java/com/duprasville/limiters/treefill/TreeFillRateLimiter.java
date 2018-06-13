@@ -1,5 +1,6 @@
 package com.duprasville.limiters.treefill;
 
+import com.duprasville.limiters.treefill.domain.Message;
 import com.duprasville.limiters.util.KaryTree;
 import com.duprasville.limiters.DistributedRateLimiter;
 import com.google.common.base.Stopwatch;
@@ -63,7 +64,9 @@ public class TreeFillRateLimiter implements DistributedRateLimiter, MessageRecei
 
     @Override
     public void receive(Message message) {
-        getWindowFor(message.getWindow()).ifPresent(w -> w.receive(message));
+//        getWindowFor(message.getWindow()).ifPresent(w -> w.receive(message));
+        // todo we want to figure out how to tell what window frame we are in for the getWindowFor method? why?
+        getWindowFor(message.getRound()).ifPresent(w -> w.receive(message));
     }
 
     private long currentWindowFrame() {

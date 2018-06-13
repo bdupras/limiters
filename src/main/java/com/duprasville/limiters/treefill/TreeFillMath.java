@@ -48,7 +48,7 @@ public class TreeFillMath {
      *    heavy nodes ŵᵢm = [8, 4, 2, 1, 1]
      *
      * <p>
-     * As long as the Detect and Full messages carry their aggregate number of permits they represent,
+     * As long as the Detect and ChildFull messages carry their aggregate number of permits they represent,
      * the root node can detect that W permits have been acquired with or without this final round.
      *
      * @param W cluster-wide permits

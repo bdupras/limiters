@@ -1,5 +1,11 @@
 package com.duprasville.limiters.treefill;
 
+import com.duprasville.limiters.treefill.domain.Acquire;
+import com.duprasville.limiters.treefill.domain.ChildFull;
+import com.duprasville.limiters.treefill.domain.Detect;
+import com.duprasville.limiters.treefill.domain.Inform;
+import com.duprasville.limiters.treefill.domain.Message;
+import com.duprasville.limiters.treefill.domain.RoundFull;
 import com.duprasville.limiters.util.SerialExecutor;
 
 import java.util.concurrent.Executor;
@@ -46,8 +52,8 @@ public class WindowState implements MessageReceiver, MessageProcessor {
     }
 
     @Override
-    public void process(Full full) {
-        System.out.println(full.toString());
+    public void process(ChildFull childFull) {
+        System.out.println(childFull.toString());
     }
 
     @Override
