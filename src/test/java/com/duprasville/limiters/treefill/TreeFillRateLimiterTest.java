@@ -181,6 +181,18 @@ public class TreeFillRateLimiterTest {
   }
 
   @Test
+  void testSendingOverTheRateLimitW() throws ExecutionException, InterruptedException {
+    List<TreeFillRateLimiter> nodes = buildGraph(3, 12);
+    TreeFillRateLimiter acquiringNode = nodes.get(1);
+    acquiringNode.acquire(6);
+    // only 6 remaining
+    assertEquals(2, acquiringNode.currentWindow().round);
+
+    boolean result = acquiringNode.acquire(7).get();
+    assertFalse(result);
+  }
+
+  @Test
   void testNodesWithExtraAcquiresWhenRoundIncrements() {
     List<TreeFillRateLimiter> nodes = buildGraph(3, 12);
 

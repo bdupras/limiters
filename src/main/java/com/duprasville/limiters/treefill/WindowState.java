@@ -36,6 +36,7 @@ class WindowState {
 
   private MessageDeliverator messageDeliverator;
   private long permitCounter = 0;
+  private long knownPermitsAcquiredAcrossWholeCluster = 0;
 
   boolean windowOpen = true;
   int round = 1; // begin at one according to the paper
@@ -105,7 +106,7 @@ class WindowState {
 
   public CompletableFuture<Boolean> acquire(long permits) {
 
-    if (this.permitCounter + permits > this.W) {
+    if ((this.permitCounter + permits + this.knownPermitsAcquiredAcrossWholeCluster) > this.W) {
       return CompletableFuture.completedFuture(false);
     }
 
@@ -187,8 +188,8 @@ class WindowState {
                   ((Detect) message).getPermitsAcquired()
               )
           );
-        } else {
-          if (isGraphBelowFull()) saveUnrecordedDetects((Detect)message);
+        } else /* graph is full and I am Root */ {
+          saveUnrecordedDetects((Detect)message);
         }
         break;
 
@@ -294,6 +295,9 @@ class WindowState {
   }
 
   private void advanceRound() {
+
+    this.knownPermitsAcquiredAcrossWholeCluster += this.N * this.shareThisRound;
+
     this.round++;
     resetThisNode();
 
@@ -335,7 +339,6 @@ class WindowState {
       for (boolean permit : childPermitsAllocated) {
         if (!permit) return false;
       }
-
       return true;
     }
   }
@@ -344,8 +347,11 @@ class WindowState {
    * This should only be called when the node is the root.  There is a detect, but no place to store it.
    */
   private void saveUnrecordedDetects(Detect message) {
-    assert(isRoot());
-    permitCounter += message.getPermitsAcquired();
+    if (isRoot()) {
+      permitCounter += message.getPermitsAcquired();
+    } else {
+      logger.info("WARNING: We weren't the root node, but we were told to save unrecorded Detects -- this is a faulty state!");
+    }
   }
 
   private void notifyParentIfAny(Detect message) {
