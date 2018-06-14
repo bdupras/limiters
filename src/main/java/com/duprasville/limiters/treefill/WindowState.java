@@ -134,6 +134,10 @@ class WindowState {
   }
 
   CompletableFuture<Void> receive(TreeFillMessage message) {
+    if (message.round != this.round) {
+      logger.info("Node " + this.id + " received a message from round " + message.round
+          + " while in round " + this.round);
+    }
     messageExecutor.execute(() -> process(message));
     return CompletableFuture.completedFuture(null);
   }
