@@ -2,7 +2,7 @@ package com.duprasville.limiters.integration;
 
 import com.duprasville.limiters.futureapi.DistributedRateLimiter;
 import com.duprasville.limiters.futureapi.DistributedRateLimiters;
-import com.duprasville.limiters.futureapi.TreeFillConfig;
+import com.duprasville.limiters.api.TreeFillConfig;
 import com.duprasville.limiters.integration.proxies.DelayedProxyMsgDeliverator;
 import com.duprasville.limiters.testutil.SameThreadExecutorService;
 import com.duprasville.limiters.testutil.TestTicker;

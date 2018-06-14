@@ -13,13 +13,14 @@ public class DelayedProxyMsgDeliverator extends ProxyMessageDeliverator {
   volatile boolean allowMessages = false;
 
   @Override
-  public void send(Message message) {
+  public CompletableFuture<Void> send(Message message) {
     CachedMsgFuture cachedItem = new CachedMsgFuture(message);
     if (allowMessages) {
       sendMessage(cachedItem);
     } else {
       cache.add(cachedItem);
     }
+    return CompletableFuture.completedFuture(null);
   }
 
   public void releaseMessages() {

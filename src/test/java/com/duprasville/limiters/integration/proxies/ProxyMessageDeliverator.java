@@ -9,18 +9,18 @@ import java.util.concurrent.TimeUnit;
 
 import com.duprasville.limiters.futureapi.DistributedRateLimiter;
 import com.duprasville.limiters.api.Message;
-import com.duprasville.limiters.api.MessageDeliverator;
+import com.duprasville.limiters.futureapi.FutureMessageDeliverator;
 
-public class ProxyMessageDeliverator implements MessageDeliverator {
+public class ProxyMessageDeliverator implements FutureMessageDeliverator {
 
   protected Map<Long, DistributedRateLimiter> idToNode = new HashMap<>();
 
   @Override
-  public void send(Message message) {
+  public CompletableFuture<Void> send(Message message) {
     DistributedRateLimiter distributedRateLimiter = idToNode.get(message.getDst());
 
     //TODO: Insert some stuff in here
-    distributedRateLimiter.receive(message);
+    return distributedRateLimiter.receive(message);
   }
 
   public void setNode(long id, DistributedRateLimiter treeNode1) {

@@ -1,4 +1,4 @@
-package com.duprasville.limiters.futureapi;
+package com.duprasville.limiters.api;
 
 public class TreeFillConfig {
   public final long nodeId;
