@@ -6,6 +6,7 @@ import com.duprasville.limiters.api.MessageDeliverator;
 import com.duprasville.limiters.testutil.SameThreadExecutorService;
 import com.duprasville.limiters.testutil.TestTicker;
 import com.duprasville.limiters.treefill.domain.Detect;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -16,6 +17,7 @@ import java.util.Map;
 import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
@@ -34,9 +36,9 @@ public class TreeFillRateLimiterTest {
   @Test
   void testAcquire() throws ExecutionException, InterruptedException {
     TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 8, ticker, executor, mockMessageDeliverator);
-      mockMessageDeliverator.addNode(node);
+    mockMessageDeliverator.addNode(node);
 
-      assertTrue(node.acquire().get());
+    assertTrue(node.acquire().get());
   }
 
   @Test
@@ -70,6 +72,18 @@ public class TreeFillRateLimiterTest {
     node.acquire();
     // at this point we have exhausted the amount of requested rate limit quota
     assertTrue(!node.currentWindow().windowOpen);
+  }
+
+  @Test
+  void testMultiAcquireWithOneNodeAndFourPermits() {
+    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 4, ticker, executor, mockMessageDeliverator);
+    mockMessageDeliverator.addNode(node);
+    node.acquire(2);
+
+    assertEquals(2, node.currentWindow().round);
+
+    node.acquire(2);
+    assertFalse(node.currentWindow().windowOpen);
   }
 
   private List<TreeFillRateLimiter> buildGraph(int N, int W) {
@@ -154,7 +168,7 @@ public class TreeFillRateLimiterTest {
     TreeFillRateLimiter node1 = nodes.get(1);
     TreeFillRateLimiter node2 = nodes.get(2);
 
-    for (int i = 0; i<4; i++) {
+    for (int i = 0; i < 4; i++) {
       node1.acquire();
     }
 
@@ -176,11 +190,11 @@ public class TreeFillRateLimiterTest {
 
     assertTrue(acquiringNode.currentWindow().windowOpen);
 
-    assertEquals(acquiringNode.currentWindow().round, 1);
+    assertEquals(1, acquiringNode.currentWindow().round);
 
     acquiringNode.acquire();
 
-    assertEquals(acquiringNode.currentWindow().round, 2);
+    assertEquals(2, acquiringNode.currentWindow().round);
 
     acquiringNode.acquire();
     acquiringNode.acquire();
@@ -189,7 +203,7 @@ public class TreeFillRateLimiterTest {
 
     acquiringNode.acquire();
 
-    assertEquals(acquiringNode.currentWindow().round, 3);
+    assertEquals(3, acquiringNode.currentWindow().round);
 
     acquiringNode.acquire();
     acquiringNode.acquire();
@@ -216,9 +230,9 @@ public class TreeFillRateLimiterTest {
       DistributedRateLimiter dest = nodesById.get(message.getDst());
 
       if (dest != null) {
-          return dest.receive(message);
+        return dest.receive(message);
       } else {
-          return CompletableFuture.completedFuture(null);
+        return CompletableFuture.completedFuture(null);
       }
     }
   }

@@ -5,7 +5,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.logging.Logger;
 
-import com.duprasville.limiters.api.Message;
 import com.duprasville.limiters.api.MessageDeliverator;
 import com.duprasville.limiters.treefill.domain.Acquire;
 import com.duprasville.limiters.treefill.domain.ChildFull;
@@ -105,8 +104,6 @@ class WindowState {
   }
 
   public CompletableFuture<Boolean> acquire(long permits) {
-    // TODO DO NOT
-    assert (permits == 1L);
 
     if (this.windowOpen && (this.shareThisRound > 0)) {
       logger.info(
@@ -118,31 +115,9 @@ class WindowState {
               "; isThisLastRound=" + this.isThisLastRound
       );
 
-      // enqueue(Detect d) -- on ourselves
-      if ((this.permitCounter + 1) <= this.shareThisRound) {
-        messageDeliverator.send(new Acquire(this.id, this.id, this.round, 1));
-        return CompletableFuture.completedFuture(true);
-      } else if (((this.permitCounter + 1) > this.shareThisRound) &&
-          ((this.permitCounter + 1) <= this.W) || (this.N > this.W)) {
-        // we can potentially reshuffle
-        messageDeliverator.send(
-            new Detect(
-                this.id,
-                this.parentId,
-                this.round,
-                1 // rebalancing the extra permit
-            )
-        );
-        return CompletableFuture.completedFuture(true);
-      }
-    } else if (isRoot()) {
-      messageDeliverator.send(
-          new CloseWindow(
-              this.id,
-              this.id,
-              this.round
-          )
-      );
+      messageDeliverator.send(new Acquire(this.id, this.id, this.round, permits));
+      return CompletableFuture.completedFuture(true);
+
     }
 
     // p + r > w_i:
@@ -166,11 +141,16 @@ class WindowState {
     boolean amRoot = isRoot();
 
     switch (message.type) {
-      case Acquire:
-        long permitsAcquired = ((Acquire) message).getPermitsAcquired();
 
-        this.permitCounter += permitsAcquired;
-        handleExtraPermitsAcquiredThisRound(message.getSrc());
+      case Acquire:
+        long permits = ((Acquire) message).getPermitsAcquired();
+
+        if (this.permitCounter + permits <= this.W) {
+          this.permitCounter += permits;
+          if (this.permitCounter >= this.shareThisRound) {
+            handleExtraPermitsAcquiredThisRound(this.id);
+          }
+        }
 
         break;
 
@@ -178,7 +158,9 @@ class WindowState {
         if (!this.selfPermitAllocated) {
           this.selfPermitAllocated = true;
 
-          if (isGraphBelowFull()) notifyParentIfAny(message);
+          if (isGraphBelowFull()) {
+            notifyParentIfAny((Detect)message);
+          }
         } else if (!areChildrenFull) {
           Optional<Long> maybeUnfilledChild = getUnfilledChild();
 
@@ -201,6 +183,8 @@ class WindowState {
                   ((Detect) message).getPermitsAcquired()
               )
           );
+        } else {
+          if (isGraphBelowFull()) saveUnrecordedDetects((Detect)message);
         }
         break;
 
@@ -352,7 +336,15 @@ class WindowState {
     }
   }
 
-  private void notifyParentIfAny(Message message) {
+  /**
+   * This should only be called when the node is the root.  There is a detect, but no place to store it.
+   */
+  private void saveUnrecordedDetects(Detect message) {
+    assert(isRoot());
+    permitCounter += message.getPermitsAcquired();
+  }
+
+  private void notifyParentIfAny(Detect message) {
     if (!isRoot()) {
       messageDeliverator.send(
           new ChildFull(this.id, this.parentId, this.round)
