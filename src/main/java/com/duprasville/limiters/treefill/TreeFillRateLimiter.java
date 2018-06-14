@@ -12,7 +12,6 @@ import java.util.concurrent.*;
 public class TreeFillRateLimiter implements ClusterRateLimiter {
     private final long nodeId;
     private final long clusterSize;
-    private final MessageDeliverator messageDeliverator;
 
     private final Stopwatch stopwatch;
     private final ConcurrentMap<Long, WindowState> currentWindows = new ConcurrentSkipListMap<>();
@@ -29,7 +28,6 @@ public class TreeFillRateLimiter implements ClusterRateLimiter {
     ) {
         this.nodeId = id;
         this.clusterSize = N;
-        this.messageDeliverator = messageDeliverator;
         this.windowingDeliverator = (message) -> {
             ((TreeFillMessage)message).window = currentWindowFrame();
             messageDeliverator.send(message);
@@ -92,7 +90,7 @@ public class TreeFillRateLimiter implements ClusterRateLimiter {
                                     this.nodeId,
                                     this.clusterSize,
                                     this.permitsPerSecond,
-                                    this.messageDeliverator
+                                    this.windowingDeliverator
                             ));
         } else {
             return WindowState.NIL;
