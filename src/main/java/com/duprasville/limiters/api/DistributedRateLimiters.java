@@ -1,23 +1,50 @@
 package com.duprasville.limiters.api;
 
+import java.util.concurrent.CompletableFuture;
+
 import com.duprasville.limiters.treefill.TreeFillRateLimiter;
 import com.google.common.base.Ticker;
 import com.google.common.util.concurrent.ForkedRateLimiter;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 
 public class DistributedRateLimiters {
   public static final DistributedRateLimiter UNLIMITED = (permits) -> CompletableFuture.completedFuture(true);
   public static final DistributedRateLimiter NEVER = (permits) -> CompletableFuture.completedFuture(false);
 
+  public static DistributedRateLimiter fromClusterRateLimiter(ClusterRateLimiter clusterRateLimiter) {
+    return new DistributedRateLimiter() {
+      private ClusterRateLimiter delegate = clusterRateLimiter;
+
+      @Override
+      public CompletableFuture<Void> receive(Message message) {
+        delegate.receive(message);
+        return CompletableFuture.completedFuture(null);
+      }
+
+      @Override
+      public CompletableFuture<Boolean> acquire(long permits) {
+        return CompletableFuture.completedFuture(delegate.acquire(permits));
+      }
+
+      @Override
+      public CompletableFuture<Boolean> acquire() {
+        return CompletableFuture.completedFuture(delegate.acquire());
+      }
+
+      @Override
+      public void setRate(long permitsPerSecond) {
+        delegate.setRate(permitsPerSecond);
+      }
+    };
+  }
+
   public static DistributedRateLimiter treefill(
       TreeFillConfig treeFillConfig,
       Ticker ticker,
-      Executor executor,
       MessageDeliverator messageDeliverator
   ) {
-    return new TreeFillRateLimiter(treeFillConfig.nodeId, treeFillConfig.clusterSize, treeFillConfig.permitsPerSecond, ticker, executor, messageDeliverator);
+    return fromClusterRateLimiter(
+        new TreeFillRateLimiter(treeFillConfig.nodeId, treeFillConfig.clusterSize, treeFillConfig.permitsPerSecond, ticker, messageDeliverator)
+    );
   }
 
   public static DistributedRateLimiter divided(

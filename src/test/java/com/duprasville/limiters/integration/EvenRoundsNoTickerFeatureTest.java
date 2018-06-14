@@ -21,7 +21,6 @@ public class EvenRoundsNoTickerFeatureTest {
   private DistributedRateLimiter treeNode3;
   private Ticker ticker;
   private ProxyMessageDeliverator deliverator;
-  private Executor executor;
 
   //Rate / N nodes = 8 per node TOTAL
   //Round 1 - 4 permits
@@ -33,12 +32,11 @@ public class EvenRoundsNoTickerFeatureTest {
   @BeforeEach
   void init() {
     this.ticker = new TestTicker(0L);
-    this.executor = new SameThreadExecutorService();
     this.deliverator = new ProxyMessageDeliverator();
 
-    treeNode1 = DistributedRateLimiters.treefill(new TreeFillConfig(1, 3, rate), ticker, executor, deliverator);
-    treeNode2 = DistributedRateLimiters.treefill(new TreeFillConfig(2, 3, rate), ticker, executor, deliverator);
-    treeNode3 = DistributedRateLimiters.treefill(new TreeFillConfig(3, 3, rate), ticker, executor, deliverator);
+    treeNode1 = DistributedRateLimiters.treefill(new TreeFillConfig(1, 3, rate), ticker, deliverator);
+    treeNode2 = DistributedRateLimiters.treefill(new TreeFillConfig(2, 3, rate), ticker, deliverator);
+    treeNode3 = DistributedRateLimiters.treefill(new TreeFillConfig(3, 3, rate), ticker, deliverator);
 
     deliverator.setNode(1, treeNode1);
     deliverator.setNode(2, treeNode2);

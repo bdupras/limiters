@@ -13,14 +13,13 @@ public class DelayedProxyMsgDeliverator extends ProxyMessageDeliverator {
   volatile boolean allowMessages = false;
 
   @Override
-  public CompletableFuture<Void> send(Message message) {
+  public void send(Message message) {
     CachedMsgFuture cachedItem = new CachedMsgFuture(message);
     if (allowMessages) {
       sendMessage(cachedItem);
     } else {
       cache.add(cachedItem);
     }
-    return cachedItem.future;
   }
 
   public void releaseMessages() {
@@ -35,19 +34,7 @@ public class DelayedProxyMsgDeliverator extends ProxyMessageDeliverator {
 
   private void sendMessage(CachedMsgFuture msgFuture) {
     try {
-      super.send(msgFuture.message)
-          .thenApply(result -> {
-            //When this future completes, complete the client future...
-            msgFuture.future.complete(null);
-            return null;
-          })
-          .exceptionally(e ->
-              {
-                //When this future completes exceptionally, complete the client exceptionally.
-                msgFuture.future.completeExceptionally(new RuntimeException("error", e));
-                return msgFuture.future;
-              }
-          ).get();
+      super.send(msgFuture.message);
     } catch (Exception e) {
       System.out.println("Exception during sending of messages.  Ignoring and continuing.");
     }

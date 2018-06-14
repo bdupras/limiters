@@ -16,11 +16,11 @@ public class ProxyMessageDeliverator implements MessageDeliverator {
   protected Map<Long, DistributedRateLimiter> idToNode = new HashMap<>();
 
   @Override
-  public CompletableFuture<Void> send(Message message) {
+  public void send(Message message) {
     DistributedRateLimiter distributedRateLimiter = idToNode.get(message.getDst());
 
     //TODO: Insert some stuff in here
-    return distributedRateLimiter.receive(message);
+    distributedRateLimiter.receive(message);
   }
 
   public void setNode(long id, DistributedRateLimiter treeNode1) {

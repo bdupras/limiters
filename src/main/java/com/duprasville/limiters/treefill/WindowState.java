@@ -1,7 +1,5 @@
 package com.duprasville.limiters.treefill;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import java.util.logging.Logger;
 
 import com.duprasville.limiters.api.MessageDeliverator;
@@ -11,16 +9,12 @@ import com.duprasville.limiters.treefill.domain.CloseWindow;
 import com.duprasville.limiters.treefill.domain.Detect;
 import com.duprasville.limiters.treefill.domain.RoundFull;
 import com.duprasville.limiters.treefill.domain.TreeFillMessage;
-import com.duprasville.limiters.util.SerialExecutor;
 
 class WindowState {
   // Used to receive & throw away very delayed messages - better than mucking with Option<WindowState>
-  public static final WindowState NIL_WINDOW =
-      new WindowState(1, 1, 1, (message) -> CompletableFuture.completedFuture(null), (e) -> {
-      });
+  public static final WindowState NIL = new WindowState(1, 1, 1, MessageDeliverator.NIL);
 
   private final Logger logger;
-  private final SerialExecutor messageExecutor;
 
   private final long id;
   private final long parentId;
@@ -53,14 +47,12 @@ class WindowState {
     }
   }
 
-  public WindowState(long id, long N, long W, MessageDeliverator m, Executor executor) {
+  public WindowState(long id, long N, long W, MessageDeliverator m) {
     this.id = id;
     this.N = N;
 
     assertWSuitable(N, W);
     this.W = W;
-
-    this.messageExecutor = new SerialExecutor(executor);
 
     this.hasChildren = (N > 1) && (this.id <= (N / 2));
     // if we are the root, parentId is 0, which is fine since node ids begin at 1
@@ -99,14 +91,14 @@ class WindowState {
     handleExtraPermitsAcquiredThisRound(this.id);
   }
 
-  public CompletableFuture<Boolean> acquire() {
+  public boolean acquire() {
     return acquire(1);
   }
 
-  public CompletableFuture<Boolean> acquire(long permits) {
+  public boolean acquire(long permits) {
 
     if ((this.permitCounter + permits + this.knownPermitsAcquiredAcrossWholeCluster) > this.W) {
-      return CompletableFuture.completedFuture(false);
+      return false;
     }
 
     if (this.windowOpen && (this.shareThisRound > 0)) {
@@ -120,7 +112,7 @@ class WindowState {
       );
 
       messageDeliverator.send(new Acquire(this.id, this.id, this.round, permits));
-      return CompletableFuture.completedFuture(true);
+      return true;
 
     }
 
@@ -130,19 +122,15 @@ class WindowState {
     // acquire(r_1) --> goes to p + r == w_i case
     // acquire(r_2) --> keeps going
     logger.info("cowardly refusing to enqueue permit; RATE LIMIT REACHED!");
-    return CompletableFuture.completedFuture(false);
+    return false;
   }
 
-  CompletableFuture<Void> receive(TreeFillMessage message) {
+  void receive(TreeFillMessage message) {
     if (message.round != this.round) {
       logger.info("Node " + this.id + " received a message from round " + message.round
           + " while in round " + this.round);
     }
-    messageExecutor.execute(() -> process(message));
-    return CompletableFuture.completedFuture(null);
-  }
 
-  CompletableFuture<Void> process(TreeFillMessage message) {
     logger.info("receive(): " + message.toString());
 
     boolean areChildrenFull = isGraphBelowFull();
@@ -277,8 +265,6 @@ class WindowState {
       default:
         throw new UnsupportedOperationException("oops");
     }
-
-    return CompletableFuture.completedFuture(null);
   }
 
   private void resendDetectFromAFutureRoundAsAcquire(Detect message) {

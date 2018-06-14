@@ -1,18 +1,19 @@
 package com.duprasville.limiters.treefill;
 
-import com.duprasville.limiters.api.DistributedRateLimiter;
+import com.duprasville.limiters.api.ClusterRateLimiter;
 import com.duprasville.limiters.api.Message;
 import com.duprasville.limiters.api.MessageDeliverator;
+import com.duprasville.limiters.api.MessageReceiver;
+import com.duprasville.limiters.api.RateLimiter;
 import com.duprasville.limiters.treefill.domain.TreeFillMessage;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Ticker;
 
 import java.util.concurrent.*;
 
-public class TreeFillRateLimiter implements DistributedRateLimiter {
+public class TreeFillRateLimiter implements ClusterRateLimiter {
     private final long nodeId;
     private final long clusterSize;
-    private final Executor executor;
     private final MessageDeliverator messageDeliverator;
 
     private final Stopwatch stopwatch;
@@ -26,16 +27,14 @@ public class TreeFillRateLimiter implements DistributedRateLimiter {
             long N,
             long W,
             Ticker ticker,
-            Executor executor,
             MessageDeliverator messageDeliverator
     ) {
         this.nodeId = id;
         this.clusterSize = N;
-        this.executor = executor;
         this.messageDeliverator = messageDeliverator;
         this.windowingDeliverator = (message) -> {
             ((TreeFillMessage)message).window = currentWindowFrame();
-            return messageDeliverator.send(message);
+            messageDeliverator.send(message);
         };
 
         this.permitsPerSecond = W;
@@ -46,7 +45,7 @@ public class TreeFillRateLimiter implements DistributedRateLimiter {
     }
 
     @Override
-    public CompletableFuture<Boolean> acquire(long permits) {
+    public boolean acquire(long permits) {
         return currentWindow().acquire(permits);
     }
 
@@ -56,7 +55,7 @@ public class TreeFillRateLimiter implements DistributedRateLimiter {
     }
 
     @Override
-    public CompletableFuture<Void> receive(Message message) {
+    public void receive(Message message) {
         TreeFillMessage treefillMessage = (TreeFillMessage) message; // TODO validate inbound message first
 
         // TODO this is a nasty dirty hack - stop it.
@@ -64,7 +63,7 @@ public class TreeFillRateLimiter implements DistributedRateLimiter {
             treefillMessage.window = currentWindowFrame();
         }
 
-        return getWindowFor(treefillMessage.window).receive(treefillMessage);
+        getWindowFor(treefillMessage.window).receive(treefillMessage);
     }
 
     private long currentWindowFrame() {
@@ -95,11 +94,10 @@ public class TreeFillRateLimiter implements DistributedRateLimiter {
                                     this.nodeId,
                                     this.clusterSize,
                                     this.permitsPerSecond,
-                                    this.messageDeliverator,
-                                    this.executor
+                                    this.messageDeliverator
                             ));
         } else {
-            return WindowState.NIL_WINDOW;
+            return WindowState.NIL;
         }
     }
 

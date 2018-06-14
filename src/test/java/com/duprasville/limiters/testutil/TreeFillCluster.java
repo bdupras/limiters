@@ -1,15 +1,17 @@
 package com.duprasville.limiters.testutil;
 
-import com.duprasville.limiters.treefill.TreeFillRateLimiter;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
+import com.duprasville.limiters.api.DistributedRateLimiter;
+import com.duprasville.limiters.api.DistributedRateLimiters;
+import com.duprasville.limiters.treefill.TreeFillRateLimiter;
+
 public class TreeFillCluster {
-    final Map<Long, TreeFillRateLimiter> nodes;
+    final Map<Long, DistributedRateLimiter> nodes;
     private final long permitsPerSecond;
     private final TestTicker ticker;
     private final Executor executor;
@@ -34,10 +36,9 @@ public class TreeFillCluster {
                     N,
                     W,
                     ticker,
-                    executor,
                     testMessageDeliverator
             );
-            this.nodes.put(m, node);
+            this.nodes.put(m, DistributedRateLimiters.fromClusterRateLimiter(node));
         }
     }
 

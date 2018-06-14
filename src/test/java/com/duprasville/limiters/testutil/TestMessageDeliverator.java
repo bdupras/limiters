@@ -3,18 +3,17 @@ package com.duprasville.limiters.testutil;
 import com.duprasville.limiters.api.Message;
 import com.duprasville.limiters.api.MessageDeliverator;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
+import java.util.function.Consumer;
 
 public class TestMessageDeliverator implements MessageDeliverator {
-    Function<Message, CompletableFuture<Void>> onSend = (msg) -> CompletableFuture.completedFuture(null);
+    Consumer<Message> onSend = (msg) -> {};
 
     @Override
-    public CompletableFuture<Void> send(Message message) {
-        return onSend.apply(message);
+    public void send(Message message) {
+        onSend.accept(message);
     }
 
-    public void onSend(Function<Message, CompletableFuture<Void>> onSend) {
+    public void onSend(Consumer<Message> onSend) {
         this.onSend = onSend;
     }
 }
