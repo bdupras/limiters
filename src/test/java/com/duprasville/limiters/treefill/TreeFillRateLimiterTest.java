@@ -94,8 +94,8 @@ public class TreeFillRateLimiterTest {
 
     assertEquals(3, node.currentWindow().round);
 
-    assertTrue(node.acquire(3).get());
-    assertFalse(node.currentWindow().windowOpen);
+    assertFalse(node.acquire(3).get());
+    assertTrue(node.currentWindow().windowOpen);
   }
 
   @Test
