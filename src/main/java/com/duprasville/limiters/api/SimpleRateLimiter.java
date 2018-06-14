@@ -1,7 +1,7 @@
 package com.duprasville.limiters.api;
 
 @FunctionalInterface
-public interface RateLimiter {
+public interface SimpleRateLimiter {
   boolean acquire(long permits);
 
   default boolean acquire() {

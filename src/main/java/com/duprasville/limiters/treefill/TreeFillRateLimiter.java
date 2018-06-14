@@ -3,8 +3,6 @@ package com.duprasville.limiters.treefill;
 import com.duprasville.limiters.api.ClusterRateLimiter;
 import com.duprasville.limiters.api.Message;
 import com.duprasville.limiters.api.MessageDeliverator;
-import com.duprasville.limiters.api.MessageReceiver;
-import com.duprasville.limiters.api.RateLimiter;
 import com.duprasville.limiters.treefill.domain.TreeFillMessage;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Ticker;
