@@ -1,8 +1,16 @@
 package com.duprasville.limiters.treefill;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+
 import com.duprasville.limiters.api.ClusterRateLimiter;
-import com.duprasville.limiters.api.FutureSerialDeliverator;
 import com.duprasville.limiters.api.Message;
+import com.duprasville.limiters.api.SerialDeliverator;
 import com.duprasville.limiters.testutil.SameThreadExecutorService;
 import com.duprasville.limiters.testutil.TestTicker;
 import com.duprasville.limiters.treefill.domain.Acquire;
@@ -11,12 +19,6 @@ import com.duprasville.limiters.treefill.domain.TreeFillMessage;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -292,7 +294,7 @@ public class TreeFillRateLimiterTest {
     assertTrue(!acquiringNode.currentWindow().windowOpen);
   }
 
-  class MockMessageDeliverator extends FutureSerialDeliverator {
+  class MockMessageDeliverator extends SerialDeliverator {
     public List<Message> messagesSent = new ArrayList<>();
     Map<Long, ClusterRateLimiter> nodesById = new HashMap<>();
 

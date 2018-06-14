@@ -1,11 +1,13 @@
-package com.duprasville.limiters.api;
+package com.duprasville.limiters.futureapi;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
+import com.duprasville.limiters.api.Message;
+import com.duprasville.limiters.api.MessageReceiver;
 import com.duprasville.limiters.util.SerialExecutor;
 
-public class FutureSerialDeliverator implements MessageDeliverator {
+public class FutureSerialDeliverator implements FutureMessageDeliverator {
   final SerialExecutor serialExecutor;
   public FutureSerialDeliverator(ExecutorService executorService) {
     this.serialExecutor = new SerialExecutor(executorService);
@@ -27,7 +29,7 @@ public class FutureSerialDeliverator implements MessageDeliverator {
   }
 
   @Override
-  public void send(Message message) {
-    futureMessageSender.send(message);
+  public CompletableFuture<Void> send(Message message) {
+    return futureMessageSender.send(message);
   }
 }

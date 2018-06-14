@@ -1,6 +1,8 @@
-package com.duprasville.limiters.api;
+package com.duprasville.limiters.futureapi;
 
 import java.util.concurrent.CompletableFuture;
+
+import com.duprasville.limiters.api.Message;
 
 @FunctionalInterface
 public interface FutureMessageReceiver {

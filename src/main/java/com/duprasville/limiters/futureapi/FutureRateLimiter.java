@@ -1,4 +1,4 @@
-package com.duprasville.limiters.api;
+package com.duprasville.limiters.futureapi;
 
 import java.util.concurrent.CompletableFuture;
 

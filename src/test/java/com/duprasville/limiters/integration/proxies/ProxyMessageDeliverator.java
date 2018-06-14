@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import com.duprasville.limiters.api.DistributedRateLimiter;
+import com.duprasville.limiters.futureapi.DistributedRateLimiter;
 import com.duprasville.limiters.api.Message;
 import com.duprasville.limiters.api.MessageDeliverator;
 

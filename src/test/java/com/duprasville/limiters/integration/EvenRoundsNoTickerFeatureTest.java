@@ -1,10 +1,9 @@
 package com.duprasville.limiters.integration;
 
-import com.duprasville.limiters.api.DistributedRateLimiter;
-import com.duprasville.limiters.api.DistributedRateLimiters;
-import com.duprasville.limiters.api.TreeFillConfig;
+import com.duprasville.limiters.futureapi.DistributedRateLimiter;
+import com.duprasville.limiters.futureapi.DistributedRateLimiters;
+import com.duprasville.limiters.futureapi.TreeFillConfig;
 import com.duprasville.limiters.integration.proxies.ProxyMessageDeliverator;
-import com.duprasville.limiters.testutil.SameThreadExecutorService;
 import com.duprasville.limiters.testutil.TestTicker;
 import com.google.common.base.Ticker;
 import org.junit.jupiter.api.Assertions;
@@ -12,7 +11,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 
 public class EvenRoundsNoTickerFeatureTest {
 

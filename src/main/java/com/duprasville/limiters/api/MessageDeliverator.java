@@ -1,23 +1,14 @@
 package com.duprasville.limiters.api;
 
-import java.util.concurrent.CompletableFuture;
-
-public interface MessageDeliverator extends MessageSender, FutureMessageReceiver {
+public interface MessageDeliverator extends MessageSender, MessageReceiver {
   MessageDeliverator NIL = new MessageDeliverator() {
     @Override
-    public CompletableFuture<Void> receive(Message message) {
-      return CompletableFuture.completedFuture(null);
-    }
+    public void receive(Message message) { }
 
     @Override
     public void send(Message message) { }
   };
 
   @Override
-  default CompletableFuture<Void> receive(Message message) {
-    return CompletableFuture.completedFuture(null);
-  }
-
-  @Override
-  void send(Message message);
+  default void receive(Message message) {};
 }

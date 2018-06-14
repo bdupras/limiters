@@ -6,8 +6,8 @@ import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
-import com.duprasville.limiters.api.DistributedRateLimiter;
-import com.duprasville.limiters.api.DistributedRateLimiters;
+import com.duprasville.limiters.futureapi.DistributedRateLimiter;
+import com.duprasville.limiters.futureapi.DistributedRateLimiters;
 import com.duprasville.limiters.treefill.TreeFillRateLimiter;
 
 public class TreeFillCluster {
