@@ -86,6 +86,13 @@ public class TreeFillRateLimiterTest {
     assertFalse(node.currentWindow().windowOpen);
   }
 
+  @Test
+  void testExcessiveMultiAcquireWithOneNodeAndFourPermits() throws ExecutionException, InterruptedException {
+    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 4, ticker, executor, mockMessageDeliverator);
+    mockMessageDeliverator.addNode(node);
+    assertFalse(node.acquire(5).get());
+  }
+
   private List<TreeFillRateLimiter> buildGraph(int N, int W) {
     List<TreeFillRateLimiter> nodes = new ArrayList<>();
     TreeFillRateLimiter root = new TreeFillRateLimiter(1, N, W, ticker, executor, mockMessageDeliverator);

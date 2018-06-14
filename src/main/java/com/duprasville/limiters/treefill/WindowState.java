@@ -105,7 +105,11 @@ class WindowState {
 
   public CompletableFuture<Boolean> acquire(long permits) {
 
-    if (this.windowOpen && (this.shareThisRound > 0)) {
+    if (this.permitCounter + permits > this.W) {
+      return CompletableFuture.completedFuture(false);
+    }
+
+      if (this.windowOpen && (this.shareThisRound > 0)) {
       logger.info(
           "WINDOW IS OPEN! " +
               "acquire(1) on node=" + this.id +
