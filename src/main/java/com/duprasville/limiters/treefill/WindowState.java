@@ -1,6 +1,5 @@
 package com.duprasville.limiters.treefill;
 
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.logging.Logger;
@@ -160,34 +159,41 @@ class WindowState {
         break;
 
       case Detect:
-        if (!this.selfPermitAllocated) {
-          this.selfPermitAllocated = true;
+        Detect detectMesage = (Detect) message;
+        if (detectMesage.getPermitsAcquired() > this.shareThisRound) {
+          splitAndResendDetectFromAPastRound(detectMesage);
+        } else if (detectMesage.round > this.round) {
+          resendDetectFromAFutureRoundAsAcquire(detectMesage);
+        } else {
+          if (!this.selfPermitAllocated) {
+            this.selfPermitAllocated = true;
 
-          if (isGraphBelowFull()) {
-            notifyParentIfAny((Detect) message);
+            if (isGraphBelowFull()) {
+              notifyParentIfAny(detectMesage);
+            }
+          } else if (!areChildrenFull) {
+            long unfilledChild = getUnfilledChild();
+
+            messageDeliverator.send(
+                new Detect(
+                    message.getSrc(),
+                    unfilledChild,
+                    this.round,
+                    detectMesage.getPermitsAcquired()
+                )
+            );
+          } else if (!amRoot) {
+            messageDeliverator.send(
+                new Detect(
+                    message.getSrc(),
+                    this.parentId,
+                    this.round,
+                    detectMesage.getPermitsAcquired()
+                )
+            );
+          } else /* graph is full and I am Root */ {
+            saveUnrecordedDetects(detectMesage);
           }
-        } else if (!areChildrenFull) {
-          long unfilledChild = getUnfilledChild();
-
-          messageDeliverator.send(
-              new Detect(
-                  message.getSrc(),
-                  unfilledChild,
-                  this.round,
-                  ((Detect) message).getPermitsAcquired()
-              )
-          );
-        } else if (!amRoot) {
-          messageDeliverator.send(
-              new Detect(
-                  message.getSrc(),
-                  this.parentId,
-                  this.round,
-                  ((Detect) message).getPermitsAcquired()
-              )
-          );
-        } else /* graph is full and I am Root */ {
-          saveUnrecordedDetects((Detect) message);
         }
         break;
 
@@ -269,6 +275,34 @@ class WindowState {
     }
 
     return CompletableFuture.completedFuture(null);
+  }
+
+  private void resendDetectFromAFutureRoundAsAcquire(Detect message) {
+    messageDeliverator.send(
+        new Acquire(
+            message.getSrc(),
+            this.id,
+            this.round,
+            message.getPermitsAcquired()
+        )
+    );
+  }
+
+  private void splitAndResendDetectFromAPastRound(Detect message) {
+    long permits = message.getPermitsAcquired();
+    while (permits >= this.shareThisRound) {
+      messageDeliverator.send(
+          new Detect(
+              message.getSrc(),
+              this.id,
+              this.round,
+              // if we are interested in checking how many of these happen later,
+              // we could add an originator round field
+              this.shareThisRound
+          )
+      );
+      permits -= this.shareThisRound;
+    }
   }
 
   private void handleExtraPermitsAcquiredThisRound(long messageSrc) {

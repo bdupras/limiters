@@ -5,7 +5,9 @@ import com.duprasville.limiters.api.Message;
 import com.duprasville.limiters.api.MessageDeliverator;
 import com.duprasville.limiters.testutil.SameThreadExecutorService;
 import com.duprasville.limiters.testutil.TestTicker;
+import com.duprasville.limiters.treefill.domain.Acquire;
 import com.duprasville.limiters.treefill.domain.Detect;
+import com.duprasville.limiters.treefill.domain.TreeFillMessage;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -219,6 +221,41 @@ public class TreeFillRateLimiterTest {
 
     assertEquals(node2.currentWindow().round, 2);
     assertTrue(node2.currentWindow().selfPermitAllocated);
+  }
+
+  @Test
+  void testRaceBetweenPastDetectAndRoundIncrement() {
+    TreeFillRateLimiter root = new TreeFillRateLimiter(1, 3, 12, ticker, executor, mockMessageDeliverator);
+    WindowState window = root.currentWindow();
+    window.round = 2;
+    window.receive(
+        new Detect(2, 1, 1, 4)
+    );
+
+    // what *should* occur here, after we receive the late detect, is splitting up the permits
+    // acquired so they fit inside our share this round.
+
+    List<Message> messagesSent = mockMessageDeliverator.messagesSent;
+    assertEquals(2, messagesSent.size());
+    for (Message message : messagesSent) {
+      assertEquals(TreeFillMessage.MessageType.Detect, ((TreeFillMessage) message).type);
+    }
+  }
+
+  @Test
+  void testRaceBetweenIncrementRoundAndDetectFromTheFuture() {
+    TreeFillRateLimiter root = new TreeFillRateLimiter(3, 3, 12, ticker, executor, mockMessageDeliverator);
+    WindowState window = root.currentWindow();
+    window.receive(
+        new Detect(1, 3, 2, 2)
+    );
+
+    assertFalse(window.selfPermitAllocated);
+    assertEquals(1, mockMessageDeliverator.messagesSent.size());
+    TreeFillMessage message = (TreeFillMessage) mockMessageDeliverator.messagesSent.get(0);
+    assertEquals(TreeFillMessage.MessageType.Acquire, message.type);
+    assertEquals(2, ((Acquire)message).getPermitsAcquired());
+    assertEquals(1, ((Acquire)message).round);
   }
 
   private void run12PermitGraph(TreeFillRateLimiter acquiringNode) {

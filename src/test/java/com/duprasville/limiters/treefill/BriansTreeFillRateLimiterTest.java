@@ -18,7 +18,7 @@ class BriansTreeFillRateLimiterTest {
     private long ROUNDS = TreeFillMath.rounds(W, N);
     private Executor executor = new SameThreadExecutorService();
 
-    TreeFillCluster cluster;
+    private TreeFillCluster cluster;
     private TestTicker ticker = new TestTicker(0L);
 
     @BeforeEach
