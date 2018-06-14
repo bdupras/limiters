@@ -32,7 +32,7 @@ class WindowState {
   private final long W;
   private int shareThisRound = 0;
   private final boolean hasChildren;
-  private boolean[] childPermitsAllocated;
+  boolean[] childPermitsAllocated;
 
   private MessageDeliverator messageDeliverator;
   private long permitCounter = 0;
@@ -110,7 +110,7 @@ class WindowState {
       return CompletableFuture.completedFuture(false);
     }
 
-      if (this.windowOpen && (this.shareThisRound > 0)) {
+    if (this.windowOpen && (this.shareThisRound > 0)) {
       logger.info(
           "WINDOW IS OPEN! " +
               "acquire(1) on node=" + this.id +
@@ -164,21 +164,19 @@ class WindowState {
           this.selfPermitAllocated = true;
 
           if (isGraphBelowFull()) {
-            notifyParentIfAny((Detect)message);
+            notifyParentIfAny((Detect) message);
           }
         } else if (!areChildrenFull) {
-          Optional<Long> maybeUnfilledChild = getUnfilledChild();
+          long unfilledChild = getUnfilledChild();
 
-          if (maybeUnfilledChild.isPresent()) {
-            messageDeliverator.send(
-                new Detect(
-                    message.getSrc(),
-                    maybeUnfilledChild.get(),
-                    this.round,
-                    ((Detect) message).getPermitsAcquired()
-                )
-            );
-          }
+          messageDeliverator.send(
+              new Detect(
+                  message.getSrc(),
+                  unfilledChild,
+                  this.round,
+                  ((Detect) message).getPermitsAcquired()
+              )
+          );
         } else if (!amRoot) {
           messageDeliverator.send(
               new Detect(
@@ -189,7 +187,7 @@ class WindowState {
               )
           );
         } else /* graph is full and I am Root */ {
-          saveUnrecordedDetects((Detect)message);
+          saveUnrecordedDetects((Detect) message);
         }
         break;
 
@@ -320,16 +318,19 @@ class WindowState {
     }
   }
 
-  private Optional<Long> getUnfilledChild() {
-    boolean graphBelowIsFull = isGraphBelowFull();
-
-    if (!graphBelowIsFull && !childPermitsAllocated[0]) {
-      return Optional.of(this.leftChild);
-    } else if (!graphBelowIsFull && !childPermitsAllocated[1]) {
-      return Optional.of(this.rightChild);
+  /**
+   * Only call this when you know there is an unfilled child.
+   */
+  private Long getUnfilledChild() {
+    if (isGraphBelowFull()) {
+      throw new RuntimeException("You do not have children available to pass permits to!");
     }
 
-    return Optional.empty();
+    if (!childPermitsAllocated[0]) {
+      return this.leftChild;
+    } else {
+      return this.rightChild;
+    }
   }
 
   private boolean isGraphBelowFull() {
@@ -350,7 +351,8 @@ class WindowState {
     if (isRoot()) {
       permitCounter += message.getPermitsAcquired();
     } else {
-      logger.info("WARNING: We weren't the root node, but we were told to save unrecorded Detects -- this is a faulty state!");
+      logger.info("WARNING: We weren't the root node, but we were told to " +
+          "save unrecorded Detects -- this is a faulty state!");
     }
   }
 

@@ -105,17 +105,26 @@ public class TreeFillRateLimiterTest {
     assertFalse(node.acquire(5).get());
   }
 
+  @Test
+  void testATreeWith4Levels() throws ExecutionException, InterruptedException {
+    List<TreeFillRateLimiter> nodes = buildGraph(10, 40);
+    TreeFillRateLimiter node = nodes.get(3);
+    assertTrue(node.acquire(4).get());
+    assertTrue(node.acquire(2).get());
+
+    TreeFillRateLimiter node2 = nodes.get(1);
+    assertFalse(node2.currentWindow().selfPermitAllocated);
+    assertTrue(node2.currentWindow().childPermitsAllocated[0]);
+  }
+
   private List<TreeFillRateLimiter> buildGraph(int N, int W) {
     List<TreeFillRateLimiter> nodes = new ArrayList<>();
-    TreeFillRateLimiter root = new TreeFillRateLimiter(1, N, W, ticker, executor, mockMessageDeliverator);
-    mockMessageDeliverator.addNode(root);
-    nodes.add(root);
-    TreeFillRateLimiter leftChild = new TreeFillRateLimiter(2, N, W, ticker, executor, mockMessageDeliverator);
-    mockMessageDeliverator.addNode(leftChild);
-    nodes.add(leftChild);
-    TreeFillRateLimiter rightChild = new TreeFillRateLimiter(3, N, W, ticker, executor, mockMessageDeliverator);
-    mockMessageDeliverator.addNode(rightChild);
-    nodes.add(rightChild);
+
+    for (int i = 1; i <= N; i++) {
+      TreeFillRateLimiter nodelet = new TreeFillRateLimiter(i, N, W, ticker, executor, mockMessageDeliverator);
+      mockMessageDeliverator.addNode(nodelet);
+      nodes.add(nodelet);
+    }
 
     return nodes;
   }
