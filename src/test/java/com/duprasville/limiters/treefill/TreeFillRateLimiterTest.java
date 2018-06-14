@@ -87,6 +87,18 @@ public class TreeFillRateLimiterTest {
   }
 
   @Test
+  void test6AcquiresWithOneNodeAndFourPermits() throws ExecutionException, InterruptedException {
+    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 4, ticker, executor, mockMessageDeliverator);
+    mockMessageDeliverator.addNode(node);
+    node.acquire(3);
+
+    assertEquals(3, node.currentWindow().round);
+
+    assertTrue(node.acquire(3).get());
+    assertFalse(node.currentWindow().windowOpen);
+  }
+
+  @Test
   void testExcessiveMultiAcquireWithOneNodeAndFourPermits() throws ExecutionException, InterruptedException {
     TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 4, ticker, executor, mockMessageDeliverator);
     mockMessageDeliverator.addNode(node);
