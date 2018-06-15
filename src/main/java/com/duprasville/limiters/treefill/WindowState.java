@@ -16,18 +16,18 @@ class WindowState {
 
   private final Logger logger;
 
-  private final long id;
-  private final long parentId;
-  private long leftChild = 0;
-  private long rightChild = 0;
+  final long id;
+  final long parentId;
+  long leftChild = 0;
+  long rightChild = 0;
 
-  private final long N;
-  private final long W;
-  private int shareThisRound = 0;
-  private final boolean hasChildren;
+  final long N;
+  final long W;
+  int shareThisRound = 0;
+  final boolean hasChildren;
   boolean[] childPermitsAllocated;
 
-  private MessageSender messageSender;
+  MessageSender messageSender;
   private long permitCounter = 0;
   private long knownPermitsAcquiredAcrossWholeCluster = 0;
 
@@ -175,14 +175,7 @@ class WindowState {
                 )
             );
           } else if (!amRoot) {
-            messageSender.send(
-                new Detect(
-                    message.getSrc(),
-                    this.parentId,
-                    this.round,
-                    detectMesage.getPermitsAcquired()
-                )
-            );
+            redirectDetectMessage(detectMesage);
           } else /* graph is full and I am Root */ {
             saveUnrecordedDetects(detectMesage);
           }
@@ -265,6 +258,22 @@ class WindowState {
       default:
         throw new UnsupportedOperationException("oops");
     }
+  }
+
+  /**
+   * When a WindowState is full, then DetectMessages should be resent to another WindowState.
+   *
+   * To try different strategies for the resend, override this method
+   */
+  protected void redirectDetectMessage(Detect detectMesage) {
+    messageSender.send(  // Sending to parent
+        new Detect(
+            detectMesage.getSrc(),
+            this.parentId,
+            this.round,
+            detectMesage.getPermitsAcquired()
+        )
+    );
   }
 
   private void resendDetectFromAFutureRoundAsAcquire(Detect message) {

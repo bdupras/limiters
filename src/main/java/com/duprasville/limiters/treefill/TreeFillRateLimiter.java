@@ -21,27 +21,41 @@ public class TreeFillRateLimiter implements ClusterRateLimiter {
   private volatile long permitsPerSecond;
   private final MessageSender windowingSender;
 
-  public TreeFillRateLimiter(
-      long id,
-      long N,
-      long W,
-      Ticker ticker,
-      MessageSender messageSender
-  ) {
-    this.nodeId = id;
-    this.clusterSize = N;
-    this.windowingSender = (message) -> {
-      ((TreeFillMessage) message).window = currentWindowFrame();
-      messageSender.send(message);
-    };
+    private final boolean useRandomizedWindowState;
 
-    this.permitsPerSecond = W;
-    this.stopwatch = Stopwatch.createStarted(ticker);
-  }
+    public TreeFillRateLimiter(
+            long id,
+            long N,
+            long W,
+            Ticker ticker,
+            MessageSender messageSender
+    ) {
+        this(id, N, W, ticker, messageSender, false);
+    }
 
-  public long getId() {
-    return nodeId;
-  }
+    public TreeFillRateLimiter(
+        long id,
+        long N,
+        long W,
+        Ticker ticker,
+        MessageSender messageSender,
+        boolean useRandomizedWindowState
+    ) {
+        this.nodeId = id;
+        this.clusterSize = N;
+        this.windowingSender = (message) -> {
+            ((TreeFillMessage)message).window = currentWindowFrame();
+            messageSender.send(message);
+        };
+
+        this.permitsPerSecond = W;
+        this.stopwatch = Stopwatch.createStarted(ticker);
+        this.useRandomizedWindowState = useRandomizedWindowState;
+    }
+
+    public long getId() {
+        return nodeId;
+    }
 
   @Override
   public boolean acquire(long permits) {
@@ -85,22 +99,35 @@ public class TreeFillRateLimiter implements ClusterRateLimiter {
     return (subjectWindowFrame >= minFrame) && (subjectWindowFrame <= maxFrame);
   }
 
-  private WindowState getWindowFor(long windowFrame) {
-    long currentWindowFrame = currentWindowFrame();
-    dropOldWindows(currentWindowFrame);
-    if (allowedWindowFrame(currentWindowFrame, windowFrame)) {
-      return currentWindows.computeIfAbsent(
-          windowFrame,
-          (frame) -> new WindowState(
-              this.nodeId,
-              this.clusterSize,
-              this.permitsPerSecond,
-              this.windowingSender
-          ));
-    } else {
-      return WindowState.NIL;
+    private WindowState getWindowFor(long windowFrame) {
+        long currentWindowFrame = currentWindowFrame();
+        dropOldWindows(currentWindowFrame);
+        if (allowedWindowFrame(currentWindowFrame, windowFrame)) {
+            return currentWindows.computeIfAbsent(
+                            windowFrame,
+                            (frame) -> createWindowState());
+        } else {
+            return WindowState.NIL;
+        }
     }
-  }
+
+    private WindowState createWindowState() {
+        if (this.useRandomizedWindowState) {
+            return new WindowStateWithRandomizedRedirects(
+                this.nodeId,
+                this.clusterSize,
+                this.permitsPerSecond,
+                this.windowingSender
+            );
+        } else {
+            return new WindowState(
+                this.nodeId,
+                this.clusterSize,
+                this.permitsPerSecond,
+                this.windowingSender
+            );
+        }
+    }
 
   WindowState currentWindow() {
     long currentWindowFrame = currentWindowFrame();

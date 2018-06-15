@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
 
 import com.duprasville.limiters.api.ClusterRateLimiter;
 import com.duprasville.limiters.api.Message;
@@ -24,40 +23,37 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
-public class TreeFillRateLimiterTest {
-  private MockMessageSender mockMessageDeliverator;
-  private TestTicker ticker;
-  private ExecutorService executor;
+public class TreeFillRateLimiterTest extends TreeFillRateLimiterTestBase {
 
   @BeforeEach
   void init() {
-    this.mockMessageDeliverator = new MockMessageSender();
+    this.mockMessageSender = new MockMessageSender();
     this.ticker = new TestTicker(0L);
     this.executor = new SameThreadExecutorService();
   }
 
   @Test
   void testAcquire() throws ExecutionException, InterruptedException {
-    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 8, ticker, mockMessageDeliverator);
-    mockMessageDeliverator.addNode(node);
+    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 8, ticker, mockMessageSender);
+    mockMessageSender.addNode(node);
 
     assertTrue(node.acquire());
   }
 
   @Test
   void testAcquireDetect() {
-    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 2, 4, ticker, mockMessageDeliverator);
-    mockMessageDeliverator.addNode(node);
+    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 2, 4, ticker, mockMessageSender);
+    mockMessageSender.addNode(node);
     node.acquire();
 
-    assertTrue(!mockMessageDeliverator.messagesSent.isEmpty());
+    assertTrue(!mockMessageSender.messagesSent.isEmpty());
     assertEquals(node.currentWindow().round, 1); // round has advanced
   }
 
   @Test
   void testReceive() throws ExecutionException, InterruptedException {
-    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 32, ticker, mockMessageDeliverator);
-    mockMessageDeliverator.addNode(node);
+    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 32, ticker, mockMessageSender);
+    mockMessageSender.addNode(node);
 
     node.receive(new Detect(1, 1, 1, 1));
     assertEquals(node.currentWindow().round, 2);
@@ -65,8 +61,8 @@ public class TreeFillRateLimiterTest {
 
   @Test
   void testWithOneNodeAndTwoPermitsAllowed() {
-    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 2, ticker, mockMessageDeliverator);
-    mockMessageDeliverator.addNode(node);
+    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 2, ticker, mockMessageSender);
+    mockMessageSender.addNode(node);
     node.acquire();
     // because more permits were requested than there is space per round (with one active node),
     // we need to advance the round after we have recorded W / (2^(round - 1) * N) permits
@@ -79,8 +75,8 @@ public class TreeFillRateLimiterTest {
 
   @Test
   void testMultiAcquireWithOneNodeAndFourPermits() {
-    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 4, ticker, mockMessageDeliverator);
-    mockMessageDeliverator.addNode(node);
+    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 4, ticker, mockMessageSender);
+    mockMessageSender.addNode(node);
     node.acquire(2);
 
     assertEquals(2, node.currentWindow().round);
@@ -91,8 +87,8 @@ public class TreeFillRateLimiterTest {
 
   @Test
   void test6AcquiresWithOneNodeAndFourPermits() throws ExecutionException, InterruptedException {
-    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 4, ticker, mockMessageDeliverator);
-    mockMessageDeliverator.addNode(node);
+    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 4, ticker, mockMessageSender);
+    mockMessageSender.addNode(node);
     node.acquire(3);
 
     assertEquals(3, node.currentWindow().round);
@@ -103,8 +99,8 @@ public class TreeFillRateLimiterTest {
 
   @Test
   void testExcessiveMultiAcquireWithOneNodeAndFourPermits() throws ExecutionException, InterruptedException {
-    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 4, ticker, mockMessageDeliverator);
-    mockMessageDeliverator.addNode(node);
+    TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 4, ticker, mockMessageSender);
+    mockMessageSender.addNode(node);
     assertFalse(node.acquire(5));
   }
 
@@ -118,18 +114,6 @@ public class TreeFillRateLimiterTest {
     TreeFillRateLimiter node2 = nodes.get(1);
     assertFalse(node2.currentWindow().selfPermitAllocated);
     assertTrue(node2.currentWindow().childPermitsAllocated[0]);
-  }
-
-  private List<TreeFillRateLimiter> buildGraph(int N, int W) {
-    List<TreeFillRateLimiter> nodes = new ArrayList<>();
-
-    for (int i = 1; i <= N; i++) {
-      TreeFillRateLimiter nodelet = new TreeFillRateLimiter(i, N, W, ticker, mockMessageDeliverator);
-      mockMessageDeliverator.addNode(nodelet);
-      nodes.add(nodelet);
-    }
-
-    return nodes;
   }
 
   private void runMultiTest(boolean acquireOnRoot) throws Exception {
@@ -226,7 +210,7 @@ public class TreeFillRateLimiterTest {
 
   @Test
   void testRaceBetweenPastDetectAndRoundIncrement() {
-    TreeFillRateLimiter root = new TreeFillRateLimiter(1, 3, 12, ticker, mockMessageDeliverator);
+    TreeFillRateLimiter root = new TreeFillRateLimiter(1, 3, 12, ticker, mockMessageSender);
     WindowState window = root.currentWindow();
     window.round = 2;
     window.receive(
@@ -236,7 +220,7 @@ public class TreeFillRateLimiterTest {
     // what *should* occur here, after we receive the late detect, is splitting up the permits
     // acquired so they fit inside our share this round.
 
-    List<Message> messagesSent = mockMessageDeliverator.messagesSent;
+    List<Message> messagesSent = mockMessageSender.messagesSent;
     assertEquals(2, messagesSent.size());
     for (Message message : messagesSent) {
       assertEquals(TreeFillMessage.MessageType.Detect, ((TreeFillMessage) message).type);
@@ -245,15 +229,15 @@ public class TreeFillRateLimiterTest {
 
   @Test
   void testRaceBetweenIncrementRoundAndDetectFromTheFuture() {
-    TreeFillRateLimiter root = new TreeFillRateLimiter(3, 3, 12, ticker, mockMessageDeliverator);
+    TreeFillRateLimiter root = new TreeFillRateLimiter(3, 3, 12, ticker, mockMessageSender);
     WindowState window = root.currentWindow();
     window.receive(
         new Detect(1, 3, 2, 2)
     );
 
     assertFalse(window.selfPermitAllocated);
-    assertEquals(1, mockMessageDeliverator.messagesSent.size());
-    TreeFillMessage message = (TreeFillMessage) mockMessageDeliverator.messagesSent.get(0);
+    assertEquals(1, mockMessageSender.messagesSent.size());
+    TreeFillMessage message = (TreeFillMessage) mockMessageSender.messagesSent.get(0);
     assertEquals(TreeFillMessage.MessageType.Acquire, message.type);
     assertEquals(2, ((Acquire)message).getPermitsAcquired());
     assertEquals(1, ((Acquire)message).round);
@@ -293,22 +277,4 @@ public class TreeFillRateLimiterTest {
     assertTrue(!acquiringNode.currentWindow().windowOpen);
   }
 
-  class MockMessageSender implements MessageSender {
-    public List<Message> messagesSent = new ArrayList<>();
-    Map<Long, ClusterRateLimiter> nodesById = new HashMap<>();
-
-    public void addNode(TreeFillRateLimiter treeFillRateLimiter) {
-      nodesById.put(treeFillRateLimiter.getId(), treeFillRateLimiter);
-    }
-
-    @Override
-    public void send(Message message) {
-      messagesSent.add(message);
-      ClusterRateLimiter dest = nodesById.get(message.getDst());
-
-      if (dest != null) {
-        dest.receive(message);
-      }
-    }
-  }
 }
