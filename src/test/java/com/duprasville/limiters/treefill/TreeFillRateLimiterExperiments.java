@@ -25,7 +25,7 @@ public class TreeFillRateLimiterExperiments extends TreeFillRateLimiterTestBase 
   }
 
   @Test
-  void runWithAndWithoutRandomization() throws ExecutionException, InterruptedException {
+  void runWithAndWithoutRandomization() throws InterruptedException {
     rowLimit = 11;
     List<Integer> nonRandomizedResults = testManyTrees(false);
     List<Integer> randomizedResults = testManyTrees(true);

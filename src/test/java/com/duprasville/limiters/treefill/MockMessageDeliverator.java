@@ -10,11 +10,11 @@ import com.duprasville.limiters.api.Message;
 import com.duprasville.limiters.api.MessageSender;
 
 class MockMessageSender implements MessageSender {
-  public List<Message> messagesSent = new ArrayList<>();
-  public int messageSentBetweenRateLimiters = 0;
+  List<Message> messagesSent = new ArrayList<>();
+  int messageSentBetweenRateLimiters = 0;
   Map<Long, ClusterRateLimiter> nodesById = new HashMap<>();
 
-  public void addNode(TreeFillRateLimiter treeFillRateLimiter) {
+  void addNode(TreeFillRateLimiter treeFillRateLimiter) {
     nodesById.put(treeFillRateLimiter.getId(), treeFillRateLimiter);
   }
 

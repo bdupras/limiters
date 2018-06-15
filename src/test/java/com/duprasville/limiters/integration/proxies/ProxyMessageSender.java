@@ -13,7 +13,7 @@ import com.duprasville.limiters.futureapi.FutureMessageSender;
 
 public class ProxyMessageSender implements FutureMessageSender {
 
-  protected Map<Long, DistributedRateLimiter> idToNode = new HashMap<>();
+  Map<Long, DistributedRateLimiter> idToNode = new HashMap<>();
 
   @Override
   public CompletableFuture<Void> send(Message message) {

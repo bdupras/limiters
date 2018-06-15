@@ -15,11 +15,11 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class EvenRoundsNoTickerFeatureTest {
+class EvenRoundsNoTickerFeatureTest {
 
-  private DistributedRateLimiter treeNode1;
-  private DistributedRateLimiter treeNode2;
-  private DistributedRateLimiter treeNode3;
+  DistributedRateLimiter treeNode1;
+  DistributedRateLimiter treeNode2;
+  DistributedRateLimiter treeNode3;
   private Ticker ticker;
   private ProxyMessageSender messageSender;
   private ExecutorService executorService;

@@ -415,7 +415,7 @@ public abstract class ForkedRateLimiter {
 
         abstract void sleepMicrosUninterruptibly(long micros);
 
-        static final SleepingStopwatch createFromSystemTimer() {
+        static SleepingStopwatch createFromSystemTimer() {
             return new SleepingStopwatch() {
                 final Stopwatch stopwatch = Stopwatch.createStarted();
 
@@ -433,7 +433,7 @@ public abstract class ForkedRateLimiter {
             };
         }
 
-        static final SleepingStopwatch createFromTicker(Ticker ticker) {
+        static SleepingStopwatch createFromTicker(Ticker ticker) {
             return new SleepingStopwatch() {
                 final Stopwatch stopwatch = Stopwatch.createStarted(ticker);
 

@@ -60,7 +60,7 @@ public class TreeFillRateLimiterTest extends TreeFillRateLimiterTestBase {
     node.acquire();
     // because more permits were requested than there is space per round (with one active node),
     // we need to advance the round after we have recorded W / (2^(round - 1) * N) permits
-    assertTrue(node.currentWindow().round == 2);
+    assertEquals(2, node.currentWindow().round);
 
     node.acquire();
     // at this point we have exhausted the amount of requested rate limit quota
@@ -143,12 +143,12 @@ public class TreeFillRateLimiterTest extends TreeFillRateLimiterTestBase {
   }
 
   @Test
-  void testWithThreeNodesAndThreePermitsAllowed() throws Exception {
+  void testWithThreeNodesAndThreePermitsAllowed() {
     runMultiTest(false);
   }
 
   @Test
-  void testSendingToRootWithThreeNodesAndThreePermitsAllowed() throws Exception {
+  void testSendingToRootWithThreeNodesAndThreePermitsAllowed() {
     runMultiTest(true);
   }
 

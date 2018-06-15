@@ -10,7 +10,7 @@ public class DelayedProxyMessageSender extends ProxyMessageSender {
 
   private List<CachedMsgFuture> cache = new ArrayList<>();
 
-  volatile boolean allowMessages = false;
+  private volatile boolean allowMessages = false;
 
   @Override
   public CompletableFuture<Void> send(Message message) {
@@ -43,10 +43,10 @@ public class DelayedProxyMessageSender extends ProxyMessageSender {
 
 
   private static class CachedMsgFuture {
-    public final Message message;
+    final Message message;
     public final CompletableFuture<Void> future = new CompletableFuture<>();
 
-    public CachedMsgFuture(Message msg) {
+    CachedMsgFuture(Message msg) {
       this.message = msg;
     }
   }
