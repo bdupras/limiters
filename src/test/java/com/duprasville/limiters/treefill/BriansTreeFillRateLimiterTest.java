@@ -18,7 +18,6 @@ class BriansTreeFillRateLimiterTest {
   private Random random = new Random(0xDEADBEEF);
   private long N = 3;
   private long W = N * (long) Math.pow(2, 2);
-  private long ROUNDS = TreeFillMath.rounds(W, N);
   private ExecutorService executorService = new SameThreadExecutorService();
 
   private TreeFillCluster cluster;

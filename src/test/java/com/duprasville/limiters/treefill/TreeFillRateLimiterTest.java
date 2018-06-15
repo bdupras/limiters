@@ -238,36 +238,23 @@ public class TreeFillRateLimiterTest extends TreeFillRateLimiterTestBase {
   }
 
   private void run12PermitGraph(TreeFillRateLimiter acquiringNode) {
-    acquiringNode.acquire();
-    acquiringNode.acquire();
-    acquiringNode.acquire();
-    acquiringNode.acquire();
-    acquiringNode.acquire();
-
+    acquiringNode.acquire(5);
     assertTrue(acquiringNode.currentWindow().windowOpen);
-
     assertEquals(1, acquiringNode.currentWindow().round);
 
     acquiringNode.acquire();
-
     assertEquals(2, acquiringNode.currentWindow().round);
 
-    acquiringNode.acquire();
-    acquiringNode.acquire();
-
+    acquiringNode.acquire(2);
     assertTrue(acquiringNode.currentWindow().windowOpen);
 
     acquiringNode.acquire();
-
     assertEquals(3, acquiringNode.currentWindow().round);
 
-    acquiringNode.acquire();
-    acquiringNode.acquire();
-
+    acquiringNode.acquire(2);
     assertTrue(acquiringNode.currentWindow().windowOpen);
 
     acquiringNode.acquire();
-
     assertTrue(!acquiringNode.currentWindow().windowOpen);
   }
 

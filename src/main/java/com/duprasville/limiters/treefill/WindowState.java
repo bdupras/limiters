@@ -36,6 +36,17 @@ class WindowState {
   boolean selfPermitAllocated;
   boolean isThisLastRound;
 
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    sb.append("id:" + id)
+        .append(" permits: " + permitCounter)
+        .append(" round: " + round)
+        .append(" allocated: " + selfPermitAllocated)
+        .append(" open: " + windowOpen);
+    return sb.toString();
+  }
+
   private void assertWSuitable(long N, long W) {
     long r = W / N;
     while ((r > 1) && (r % 2 == 0)) {
@@ -48,6 +59,8 @@ class WindowState {
   }
 
   public WindowState(long id, long N, long W, MessageSender m) {
+    logger = Logger.getLogger(WindowState.class.getSimpleName());
+
     this.id = id;
     this.N = N;
 
@@ -69,7 +82,6 @@ class WindowState {
     resetThisNode();
     this.messageSender = m;
 
-    logger = Logger.getLogger(WindowState.class.getSimpleName());
   }
 
   private void resetThisNode() {
@@ -126,14 +138,12 @@ class WindowState {
   }
 
   void receive(TreeFillMessage message) {
-    if (message.round != this.round) {
+    logger.info("receive(): " + message.toString());
+    if ((message.round != this.round) && (message.type != TreeFillMessage.MessageType.RoundFull)) {
       logger.info("Node " + this.id + " received a message from round " + message.round
           + " while in round " + this.round);
     }
 
-    logger.info("receive(): " + message.toString());
-
-    boolean areChildrenFull = isGraphBelowFull();
     boolean amRoot = isRoot();
 
     switch (message.type) {
@@ -151,19 +161,19 @@ class WindowState {
         break;
 
       case Detect:
-        Detect detectMesage = (Detect) message;
-        if (detectMesage.getPermitsAcquired() > this.shareThisRound) {
-          splitAndResendDetectFromAPastRound(detectMesage);
-        } else if (detectMesage.round > this.round) {
-          resendDetectFromAFutureRoundAsAcquire(detectMesage);
+        Detect detectMessage = (Detect) message;
+        if (detectMessage.getPermitsAcquired() > this.shareThisRound) {
+          splitAndResendDetectFromAPastRound(detectMessage);
+        } else if (detectMessage.round > this.round) {
+          resendDetectFromAFutureRoundAsAcquire(detectMessage);
         } else {
           if (!this.selfPermitAllocated) {
             this.selfPermitAllocated = true;
 
             if (isGraphBelowFull()) {
-              notifyParentIfAny(detectMesage);
+              notifyParentIfAny();
             }
-          } else if (!areChildrenFull) {
+          } else if (!areChildrenFull()) {
             long unfilledChild = getUnfilledChild();
 
             messageSender.send(
@@ -171,13 +181,13 @@ class WindowState {
                     message.getSrc(),
                     unfilledChild,
                     this.round,
-                    detectMesage.getPermitsAcquired()
+                    detectMessage.getPermitsAcquired()
                 )
             );
           } else if (!amRoot) {
-            redirectDetectMessage(detectMesage);
+            redirectDetectMessage(detectMessage);
           } else /* graph is full and I am Root */ {
-            saveUnrecordedDetects(detectMesage);
+            saveUnrecordedDetects(detectMessage);
           }
         }
         break;
@@ -258,6 +268,10 @@ class WindowState {
       default:
         throw new UnsupportedOperationException("oops");
     }
+  }
+
+  private boolean areChildrenFull() {
+    return !hasChildren || (childPermitsAllocated[0] && childPermitsAllocated[1]);
   }
 
   /**
@@ -373,7 +387,7 @@ class WindowState {
       for (boolean permit : childPermitsAllocated) {
         if (!permit) return false;
       }
-      return true;
+      return this.selfPermitAllocated;
     }
   }
 
@@ -389,12 +403,12 @@ class WindowState {
     }
   }
 
-  private void notifyParentIfAny(Detect message) {
+  private void notifyParentIfAny() {
     if (!isRoot()) {
       messageSender.send(
           new ChildFull(this.id, this.parentId, this.round)
       );
-    } else if (message.getSrc() == this.id) {
+    } else {
       messageSender.send(
           new RoundFull(
               this.id,

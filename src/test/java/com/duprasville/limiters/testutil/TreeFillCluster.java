@@ -12,18 +12,12 @@ import com.duprasville.limiters.futureapi.DistributedRateLimiters;
 
 public class TreeFillCluster {
   final Map<Long, DistributedRateLimiter> nodes;
-  private final long permitsPerSecond;
-  private final TestTicker ticker;
-  private final ExecutorService executorService;
   final TestFutureMessageSender testMessageSender;
   final long clusterSize;
   final Random random;
 
   public TreeFillCluster(long N, long W, TestTicker ticker, ExecutorService executorService, Random random) {
     this.clusterSize = N;
-    this.permitsPerSecond = W;
-    this.ticker = ticker;
-    this.executorService = executorService;
     this.random = random;
 
     this.nodes = new HashMap<>((int) N);
