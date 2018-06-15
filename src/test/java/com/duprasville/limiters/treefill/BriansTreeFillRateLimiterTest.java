@@ -10,6 +10,8 @@ import com.duprasville.limiters.testutil.TreeFillCluster;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import static java.lang.String.format;
+
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BriansTreeFillRateLimiterTest {
@@ -29,8 +31,8 @@ class BriansTreeFillRateLimiterTest {
 
   @Test
   void acquire() throws Exception {
-    for (long i = 0; i < W; i++) {
-      assertTrue(cluster.acquire().get());
+    for (long i = 1; i <= W; i++) {
+      assertTrue(cluster.acquire().get(), format("failed on %d of %d", i, W));
     }
   }
 }

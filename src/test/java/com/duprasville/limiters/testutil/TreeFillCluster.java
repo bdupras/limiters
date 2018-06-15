@@ -30,7 +30,7 @@ public class TreeFillCluster {
     this.testMessageSender = new TestFutureMessageSender(); //TODO record all test messages
     this.testMessageSender.onSend((message) -> nodes.get(message.getDst()).receive(message));
 
-    for (long m = 0; m < N; m++) {
+    for (long m = 1; m <= N; m++) {
       nodes.put(m, DistributedRateLimiters.treefill(
           new TreeFillConfig(m, N, W),
           ticker,
@@ -45,7 +45,7 @@ public class TreeFillCluster {
   }
 
   public CompletableFuture<Boolean> acquire(long permits) {
-    long m = random.nextInt((int) clusterSize);
+    long m = random.nextInt((int) clusterSize) + 1;
     return nodes.get(m).acquire(permits);
   }
 }
