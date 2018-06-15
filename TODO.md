@@ -4,6 +4,7 @@
 - clean up the IO (Sender and Receiver) issues occurring on Brian's instances in the Twitter datacentre currently
 - Metrics! Graphs! Comparisons!
 - I would like to compare explicitly to whatever we can get -- if Amazon or Google have rate limiting open source work available, that would be really interesting to see
+- get the ReLogo sim stuff working with the new Treefill code and/or find something that doesn't require Eclipse to use additionally
 
 ##Show off this work when it's done
 - Brian / paper with Kim (author of original treefill paper)
