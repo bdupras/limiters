@@ -47,7 +47,7 @@ public class TreeFillRateLimiterExperiments extends TreeFillRateLimiterTestBase 
     }
   }
 
-  List<Integer> testManyTrees(boolean useRandomizedWindowStates) throws ExecutionException, InterruptedException {
+  List<Integer> testManyTrees(boolean useRandomizedWindowStates) {
     List<Integer> communicationResults = new ArrayList<>(rowLimit);
     int numLimiters = 0;
     for (int rows = 1; rows <= rowLimit; rows++) {

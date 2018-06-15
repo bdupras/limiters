@@ -48,7 +48,7 @@ public class EvenRoundsNoTickerFeatureTest {
 
   //NO time advancement here, and exhaust nodes perfectly (not realistic but a very basic start test)
   @Test
-  void testStraightupBasicAcquire() throws ExecutionException, InterruptedException {
+  void testStraightupBasicAcquire() {
     //Round 1
     messageSender.acquireOrFailSynchronous(1, 4);
     messageSender.acquireOrFailSynchronous(2, 4);
@@ -77,7 +77,7 @@ public class EvenRoundsNoTickerFeatureTest {
 
   //NO time advancement here, and exhaust nodes perfectly (not realistic but a very basic start test)
   @Test
-  void testAllFromOneNode() throws ExecutionException, InterruptedException {
+  void testAllFromOneNode() {
     //Round 1
     messageSender.acquireOrFailSynchronous(2, 4);
     messageSender.acquireOrFailSynchronous(2, 4);

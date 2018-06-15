@@ -1,14 +1,8 @@
 package com.duprasville.limiters.treefill;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
 
-import com.duprasville.limiters.api.ClusterRateLimiter;
 import com.duprasville.limiters.api.Message;
-import com.duprasville.limiters.api.MessageSender;
 import com.duprasville.limiters.testutil.SameThreadExecutorService;
 import com.duprasville.limiters.testutil.TestTicker;
 import com.duprasville.limiters.treefill.domain.Acquire;
@@ -33,7 +27,7 @@ public class TreeFillRateLimiterTest extends TreeFillRateLimiterTestBase {
   }
 
   @Test
-  void testAcquire() throws ExecutionException, InterruptedException {
+  void testAcquire() {
     TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 8, ticker, mockMessageSender);
     mockMessageSender.addNode(node);
 
@@ -51,7 +45,7 @@ public class TreeFillRateLimiterTest extends TreeFillRateLimiterTestBase {
   }
 
   @Test
-  void testReceive() throws ExecutionException, InterruptedException {
+  void testReceive() {
     TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 32, ticker, mockMessageSender);
     mockMessageSender.addNode(node);
 
@@ -86,7 +80,7 @@ public class TreeFillRateLimiterTest extends TreeFillRateLimiterTestBase {
   }
 
   @Test
-  void test6AcquiresWithOneNodeAndFourPermits() throws ExecutionException, InterruptedException {
+  void test6AcquiresWithOneNodeAndFourPermits() {
     TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 4, ticker, mockMessageSender);
     mockMessageSender.addNode(node);
     node.acquire(3);
@@ -98,14 +92,14 @@ public class TreeFillRateLimiterTest extends TreeFillRateLimiterTestBase {
   }
 
   @Test
-  void testExcessiveMultiAcquireWithOneNodeAndFourPermits() throws ExecutionException, InterruptedException {
+  void testExcessiveMultiAcquireWithOneNodeAndFourPermits() {
     TreeFillRateLimiter node = new TreeFillRateLimiter(1, 1, 4, ticker, mockMessageSender);
     mockMessageSender.addNode(node);
     assertFalse(node.acquire(5));
   }
 
   @Test
-  void testATreeWith4Levels() throws ExecutionException, InterruptedException {
+  void testATreeWith4Levels() {
     List<TreeFillRateLimiter> nodes = buildGraph(10, 40);
     TreeFillRateLimiter node = nodes.get(3);
     assertTrue(node.acquire(4));
@@ -116,7 +110,7 @@ public class TreeFillRateLimiterTest extends TreeFillRateLimiterTestBase {
     assertTrue(node2.currentWindow().childPermitsAllocated[0]);
   }
 
-  private void runMultiTest(boolean acquireOnRoot) throws Exception {
+  private void runMultiTest(boolean acquireOnRoot) {
     TreeFillRateLimiter acquiringNode;
 
     List<TreeFillRateLimiter> nodes = buildGraph(3, 3);
@@ -177,7 +171,7 @@ public class TreeFillRateLimiterTest extends TreeFillRateLimiterTestBase {
   }
 
   @Test
-  void testSendingOverTheRateLimitW() throws ExecutionException, InterruptedException {
+  void testSendingOverTheRateLimitW() {
     List<TreeFillRateLimiter> nodes = buildGraph(3, 12);
     TreeFillRateLimiter acquiringNode = nodes.get(1);
     acquiringNode.acquire(6);
@@ -239,8 +233,8 @@ public class TreeFillRateLimiterTest extends TreeFillRateLimiterTestBase {
     assertEquals(1, mockMessageSender.messagesSent.size());
     TreeFillMessage message = (TreeFillMessage) mockMessageSender.messagesSent.get(0);
     assertEquals(TreeFillMessage.MessageType.Acquire, message.type);
-    assertEquals(2, ((Acquire)message).getPermitsAcquired());
-    assertEquals(1, ((Acquire)message).round);
+    assertEquals(2, ((Acquire) message).getPermitsAcquired());
+    assertEquals(1, ((Acquire) message).round);
   }
 
   private void run12PermitGraph(TreeFillRateLimiter acquiringNode) {

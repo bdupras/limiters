@@ -48,7 +48,7 @@ public class UnevenDelayMessagesNoTickerFeatureTest {
 
   //NO time advancement here, and exhaust nodes not so perfectly with message delays
   @Test
-  void testWithMessageDelaysEvenRounds() throws ExecutionException, InterruptedException {
+  void testWithMessageDelaysEvenRounds() {
     //Round 1
     messageSender.acquireOrFailSynchronous(1, 4);
     messageSender.acquireOrFailSynchronous(2, 4);
@@ -81,7 +81,7 @@ public class UnevenDelayMessagesNoTickerFeatureTest {
 
   //NO time advancement here, and exhaust nodes not so perfectly with message delays
   @Test
-  void testSomeUnevenOversubscribedRounds() throws ExecutionException, InterruptedException {
+  void testSomeUnevenOversubscribedRounds() {
     //Round 1 - total 20 leading to Round 3!!!  round 1 total 12, then 6
     messageSender.acquireOrFailSynchronous(1, 6);
     messageSender.acquireOrFailSynchronous(2, 7);
@@ -105,7 +105,7 @@ public class UnevenDelayMessagesNoTickerFeatureTest {
   }
 
   @Test
-  void testOverLoadBottomNodes() throws ExecutionException, InterruptedException {
+  void testOverLoadBottomNodes() {
     //Round 1 - total 20 leading to Round 3!!!  round 1 total 12, then 6
     messageSender.acquireOrFailSynchronous(2, 6);
     messageSender.acquireOrFailSynchronous(2, 7);
