@@ -2,7 +2,7 @@ package com.duprasville.limiters.treefill;
 
 import java.util.logging.Logger;
 
-import com.duprasville.limiters.api.MessageDeliverator;
+import com.duprasville.limiters.api.MessageSender;
 import com.duprasville.limiters.treefill.domain.Acquire;
 import com.duprasville.limiters.treefill.domain.ChildFull;
 import com.duprasville.limiters.treefill.domain.CloseWindow;
@@ -12,7 +12,7 @@ import com.duprasville.limiters.treefill.domain.TreeFillMessage;
 
 class WindowState {
   // Used to receive & throw away very delayed messages - better than mucking with Option<WindowState>
-  public static final WindowState NIL = new WindowState(1, 1, 1, MessageDeliverator.NIL);
+  public static final WindowState NIL = new WindowState(1, 1, 1, MessageSender.NIL);
 
   private final Logger logger;
 
@@ -27,7 +27,7 @@ class WindowState {
   private final boolean hasChildren;
   boolean[] childPermitsAllocated;
 
-  private MessageDeliverator messageDeliverator;
+  private MessageSender messageSender;
   private long permitCounter = 0;
   private long knownPermitsAcquiredAcrossWholeCluster = 0;
 
@@ -47,7 +47,7 @@ class WindowState {
     }
   }
 
-  public WindowState(long id, long N, long W, MessageDeliverator m) {
+  public WindowState(long id, long N, long W, MessageSender m) {
     this.id = id;
     this.N = N;
 
@@ -67,7 +67,7 @@ class WindowState {
     }
 
     resetThisNode();
-    this.messageDeliverator = m;
+    this.messageSender = m;
 
     logger = Logger.getLogger(WindowState.class.getSimpleName());
   }
@@ -111,7 +111,7 @@ class WindowState {
               "; isThisLastRound=" + this.isThisLastRound
       );
 
-      messageDeliverator.send(new Acquire(this.id, this.id, this.round, permits));
+      messageSender.send(new Acquire(this.id, this.id, this.round, permits));
       return true;
 
     }
@@ -166,7 +166,7 @@ class WindowState {
           } else if (!areChildrenFull) {
             long unfilledChild = getUnfilledChild();
 
-            messageDeliverator.send(
+            messageSender.send(
                 new Detect(
                     message.getSrc(),
                     unfilledChild,
@@ -175,7 +175,7 @@ class WindowState {
                 )
             );
           } else if (!amRoot) {
-            messageDeliverator.send(
+            messageSender.send(
                 new Detect(
                     message.getSrc(),
                     this.parentId,
@@ -194,7 +194,7 @@ class WindowState {
         // so we send ourselves a closeWindow, OR
         // we advance to the next round
         if (amRoot && this.isThisLastRound) {
-          messageDeliverator.send(
+          messageSender.send(
               new CloseWindow(
                   this.id,
                   this.id,
@@ -210,7 +210,7 @@ class WindowState {
         this.windowOpen = false;
 
         if (this.hasChildren) {
-          messageDeliverator.send(
+          messageSender.send(
               new CloseWindow(
                   this.id,
                   this.leftChild,
@@ -218,7 +218,7 @@ class WindowState {
               )
           );
 
-          messageDeliverator.send(
+          messageSender.send(
               new CloseWindow(
                   this.id,
                   this.rightChild,
@@ -243,7 +243,7 @@ class WindowState {
         // we have just changed our view of the graph below's state
         if (isGraphBelowFull()) {
           if (!amRoot) {
-            messageDeliverator.send(
+            messageSender.send(
                 new ChildFull(
                     this.id,
                     this.parentId,
@@ -251,7 +251,7 @@ class WindowState {
                 )
             );
           } else {
-            messageDeliverator.send(
+            messageSender.send(
                 new RoundFull(
                     this.id,
                     this.id,
@@ -268,7 +268,7 @@ class WindowState {
   }
 
   private void resendDetectFromAFutureRoundAsAcquire(Detect message) {
-    messageDeliverator.send(
+    messageSender.send(
         new Acquire(
             message.getSrc(),
             this.id,
@@ -281,7 +281,7 @@ class WindowState {
   private void splitAndResendDetectFromAPastRound(Detect message) {
     long permits = message.getPermitsAcquired();
     while (permits >= this.shareThisRound) {
-      messageDeliverator.send(
+      messageSender.send(
           new Detect(
               message.getSrc(),
               this.id,
@@ -301,7 +301,7 @@ class WindowState {
       // we need to allow more collection of permits locally
       this.permitCounter -= this.shareThisRound;
 
-      messageDeliverator.send(
+      messageSender.send(
           new Detect(
               messageSrc,
               this.id,
@@ -324,7 +324,7 @@ class WindowState {
     resetThisNode();
 
     if (this.hasChildren) {
-      messageDeliverator.send(
+      messageSender.send(
           new RoundFull(
               this.id,
               this.leftChild,
@@ -332,7 +332,7 @@ class WindowState {
           )
       );
 
-      messageDeliverator.send(
+      messageSender.send(
           new RoundFull(
               this.id,
               this.rightChild,
@@ -382,11 +382,11 @@ class WindowState {
 
   private void notifyParentIfAny(Detect message) {
     if (!isRoot()) {
-      messageDeliverator.send(
+      messageSender.send(
           new ChildFull(this.id, this.parentId, this.round)
       );
     } else if (message.getSrc() == this.id) {
-      messageDeliverator.send(
+      messageSender.send(
           new RoundFull(
               this.id,
               this.id,

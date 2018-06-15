@@ -1,39 +1,44 @@
 package com.duprasville.limiters.futureapi;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
 import com.duprasville.limiters.api.ClusterRateLimiter;
 import com.duprasville.limiters.api.ClusterRateLimiters;
 import com.duprasville.limiters.api.Message;
-import com.duprasville.limiters.api.MessageDeliverator;
+import com.duprasville.limiters.api.MessageSender;
 import com.duprasville.limiters.api.TreeFillConfig;
 import com.duprasville.limiters.treefill.TreeFillRateLimiter;
+import com.duprasville.limiters.util.SerialExecutorService;
 import com.google.common.base.Ticker;
-
-import static com.duprasville.limiters.futureapi.FutureMessageDeliverator.toMessageDeliverator;
 
 public class DistributedRateLimiters {
   public static final DistributedRateLimiter UNLIMITED = (permits) -> CompletableFuture.completedFuture(true);
   public static final DistributedRateLimiter NEVER = (permits) -> CompletableFuture.completedFuture(false);
 
-  public static DistributedRateLimiter fromClusterRateLimiter(ClusterRateLimiter clusterRateLimiter) {
+  public static DistributedRateLimiter fromClusterRateLimiter(
+      ClusterRateLimiter clusterRateLimiter,
+      ExecutorService executorService
+  ) {
     return new DistributedRateLimiter() {
       private ClusterRateLimiter delegate = clusterRateLimiter;
+      private ExecutorService executor = executorService;
+      private SerialExecutorService serialExecutor = new SerialExecutorService(executor);
+
 
       @Override
-      public CompletableFuture<Void> receive(Message message) {
-        delegate.receive(message);
-        return CompletableFuture.completedFuture(null);
+      public CompletableFuture<Boolean> acquire() {
+        return CompletableFuture.supplyAsync(() -> delegate.acquire(), executor);
       }
 
       @Override
       public CompletableFuture<Boolean> acquire(long permits) {
-        return CompletableFuture.completedFuture(delegate.acquire(permits));
+        return CompletableFuture.supplyAsync(() -> delegate.acquire(permits), executor);
       }
 
       @Override
-      public CompletableFuture<Boolean> acquire() {
-        return CompletableFuture.completedFuture(delegate.acquire());
+      public CompletableFuture<Void> receive(Message message) {
+        return CompletableFuture.runAsync(() -> delegate.receive(message), serialExecutor);
       }
 
       @Override
@@ -46,22 +51,34 @@ public class DistributedRateLimiters {
   public static DistributedRateLimiter treefill(
       TreeFillConfig treeFillConfig,
       Ticker ticker,
-      FutureMessageDeliverator futureMessageDeliverator
-  ) {
-    MessageDeliverator messageDeliverator = toMessageDeliverator(futureMessageDeliverator);
+      FutureMessageSender futureMessageSender,
+      ExecutorService executorService
+      ) {
+
+    MessageSender messageSender = FutureMessageSender.toMessageSender(futureMessageSender);
+
+    TreeFillRateLimiter treeFillRateLimiter = new TreeFillRateLimiter(
+        treeFillConfig.nodeId,
+        treeFillConfig.clusterSize,
+        treeFillConfig.permitsPerSecond,
+        ticker,
+        messageSender
+    );
+
+    return fromClusterRateLimiter(treeFillRateLimiter, executorService);
+  }
+
+  public static DistributedRateLimiter divided(
+      long clusterSize,
+      double permitsPerSecond,
+      Ticker ticker,
+      ExecutorService executorService
+      ) {
+    ClusterRateLimiter dividedRateLimiter = ClusterRateLimiters.divided(clusterSize, permitsPerSecond, ticker);
+
     return fromClusterRateLimiter(
-        new TreeFillRateLimiter(
-            treeFillConfig.nodeId,
-            treeFillConfig.clusterSize,
-            treeFillConfig.permitsPerSecond,
-            ticker,
-            messageDeliverator
-        )
+        dividedRateLimiter,
+        executorService
     );
   }
-
-  public static DistributedRateLimiter divided(long clusterSize, double permitsPerSecond, Ticker ticker) {
-    return fromClusterRateLimiter(ClusterRateLimiters.divided(clusterSize, permitsPerSecond, ticker));
-  }
-
 }

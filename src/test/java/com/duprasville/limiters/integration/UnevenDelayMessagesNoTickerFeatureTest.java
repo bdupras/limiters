@@ -1,18 +1,19 @@
 package com.duprasville.limiters.integration;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+
+import com.duprasville.limiters.api.TreeFillConfig;
 import com.duprasville.limiters.futureapi.DistributedRateLimiter;
 import com.duprasville.limiters.futureapi.DistributedRateLimiters;
-import com.duprasville.limiters.api.TreeFillConfig;
-import com.duprasville.limiters.integration.proxies.DelayedProxyMsgDeliverator;
+import com.duprasville.limiters.integration.proxies.DelayedProxyMessageSender;
 import com.duprasville.limiters.testutil.SameThreadExecutorService;
 import com.duprasville.limiters.testutil.TestTicker;
 import com.google.common.base.Ticker;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 
 public class UnevenDelayMessagesNoTickerFeatureTest {
 
@@ -20,8 +21,8 @@ public class UnevenDelayMessagesNoTickerFeatureTest {
   private DistributedRateLimiter treeNode2;
   private DistributedRateLimiter treeNode3;
   private Ticker ticker;
-  private DelayedProxyMsgDeliverator deliverator;
-  private Executor executor;
+  private DelayedProxyMessageSender messageSender;
+  private ExecutorService executorService;
 
   //Rate / N nodes = 8 per node TOTAL
   //Round 1 - 4 permits * 3 = 12
@@ -33,97 +34,97 @@ public class UnevenDelayMessagesNoTickerFeatureTest {
   @BeforeEach
   void init() {
     this.ticker = new TestTicker(0L);
-    this.executor = new SameThreadExecutorService();
-    this.deliverator = new DelayedProxyMsgDeliverator();
+    this.executorService = new SameThreadExecutorService();
+    this.messageSender = new DelayedProxyMessageSender();
 
-    treeNode1 = DistributedRateLimiters.treefill(new TreeFillConfig(1, 3, rate), ticker, deliverator);
-    treeNode2 = DistributedRateLimiters.treefill(new TreeFillConfig(2, 3, rate), ticker, deliverator);
-    treeNode3 = DistributedRateLimiters.treefill(new TreeFillConfig(3, 3, rate), ticker, deliverator);
+    treeNode1 = DistributedRateLimiters.treefill(new TreeFillConfig(1, 3, rate), ticker, messageSender, executorService);
+    treeNode2 = DistributedRateLimiters.treefill(new TreeFillConfig(2, 3, rate), ticker, messageSender, executorService);
+    treeNode3 = DistributedRateLimiters.treefill(new TreeFillConfig(3, 3, rate), ticker, messageSender, executorService);
 
-    deliverator.setNode(1, treeNode1);
-    deliverator.setNode(2, treeNode2);
-    deliverator.setNode(3, treeNode3);
+    messageSender.setNode(1, treeNode1);
+    messageSender.setNode(2, treeNode2);
+    messageSender.setNode(3, treeNode3);
   }
 
   //NO time advancement here, and exhaust nodes not so perfectly with message delays
   @Test
   void testWithMessageDelaysEvenRounds() throws ExecutionException, InterruptedException {
     //Round 1
-    deliverator.acquireOrFailSynchronous(1, 4);
-    deliverator.acquireOrFailSynchronous(2, 4);
-    deliverator.acquireOrFailSynchronous(3, 4);
-    deliverator.releaseMessages();
+    messageSender.acquireOrFailSynchronous(1, 4);
+    messageSender.acquireOrFailSynchronous(2, 4);
+    messageSender.acquireOrFailSynchronous(3, 4);
+    messageSender.releaseMessages();
 
     //Round 2
-    deliverator.acquireOrFailSynchronous(1, 2);
-    deliverator.acquireOrFailSynchronous(2, 2);
-    deliverator.acquireOrFailSynchronous(3, 2);
-    deliverator.releaseMessages();
+    messageSender.acquireOrFailSynchronous(1, 2);
+    messageSender.acquireOrFailSynchronous(2, 2);
+    messageSender.acquireOrFailSynchronous(3, 2);
+    messageSender.releaseMessages();
 
     //Round 3
-    deliverator.acquireOrFailSynchronous(1, 1);
-    deliverator.acquireOrFailSynchronous(2, 1);
-    deliverator.acquireOrFailSynchronous(3, 1);
-    deliverator.releaseMessages();
+    messageSender.acquireOrFailSynchronous(1, 1);
+    messageSender.acquireOrFailSynchronous(2, 1);
+    messageSender.acquireOrFailSynchronous(3, 1);
+    messageSender.releaseMessages();
 
     //Round 4 OVERSUBSCRIBED which is fine
-    deliverator.acquireOrFailSynchronous(1, 2);
-    deliverator.acquireOrFailSynchronous(2, 2);
-    deliverator.acquireOrFailSynchronous(3, 2);
-    deliverator.releaseMessages();
+    messageSender.acquireOrFailSynchronous(1, 2);
+    messageSender.acquireOrFailSynchronous(2, 2);
+    messageSender.acquireOrFailSynchronous(3, 2);
+    messageSender.releaseMessages();
 
     //assert EVERY node is now rate limited
-    Assertions.assertFalse(deliverator.acquireSingle(1), "Should have failed to acquire but actually acquired");
-    Assertions.assertFalse(deliverator.acquireSingle(2), "Should have failed to acquire but actually acquired");
-    Assertions.assertFalse(deliverator.acquireSingle(3), "Should have failed to acquire but actually acquired");
+    Assertions.assertFalse(messageSender.acquireSingle(1), "Should have failed to acquire but actually acquired");
+    Assertions.assertFalse(messageSender.acquireSingle(2), "Should have failed to acquire but actually acquired");
+    Assertions.assertFalse(messageSender.acquireSingle(3), "Should have failed to acquire but actually acquired");
   }
 
   //NO time advancement here, and exhaust nodes not so perfectly with message delays
   @Test
   void testSomeUnevenOversubscribedRounds() throws ExecutionException, InterruptedException {
     //Round 1 - total 20 leading to Round 3!!!  round 1 total 12, then 6
-    deliverator.acquireOrFailSynchronous(1, 6);
-    deliverator.acquireOrFailSynchronous(2, 7);
-    deliverator.acquireOrFailSynchronous(3, 7);
-    deliverator.releaseMessages();
+    messageSender.acquireOrFailSynchronous(1, 6);
+    messageSender.acquireOrFailSynchronous(2, 7);
+    messageSender.acquireOrFailSynchronous(3, 7);
+    messageSender.releaseMessages();
 
     //Round 2 virtually skipped
 
     //Round 3
-    deliverator.acquireOrFailSynchronous(1, 3);
-    deliverator.acquireOrFailSynchronous(2, 1);
-    deliverator.acquireOrFailSynchronous(3, 1);
-    deliverator.releaseMessages();
+    messageSender.acquireOrFailSynchronous(1, 3);
+    messageSender.acquireOrFailSynchronous(2, 1);
+    messageSender.acquireOrFailSynchronous(3, 1);
+    messageSender.releaseMessages();
 
     //Round 4 virtually skipped
 
     //assert EVERY node is now rate limited
-    Assertions.assertFalse(deliverator.acquireSingle(1), "Should have failed to acquire but actually acquired");
-    Assertions.assertFalse(deliverator.acquireSingle(2), "Should have failed to acquire but actually acquired");
-    Assertions.assertFalse(deliverator.acquireSingle(3), "Should have failed to acquire but actually acquired");
+    Assertions.assertFalse(messageSender.acquireSingle(1), "Should have failed to acquire but actually acquired");
+    Assertions.assertFalse(messageSender.acquireSingle(2), "Should have failed to acquire but actually acquired");
+    Assertions.assertFalse(messageSender.acquireSingle(3), "Should have failed to acquire but actually acquired");
   }
 
   @Test
   void testOverLoadBottomNodes() throws ExecutionException, InterruptedException {
     //Round 1 - total 20 leading to Round 3!!!  round 1 total 12, then 6
-    deliverator.acquireOrFailSynchronous(2, 6);
-    deliverator.acquireOrFailSynchronous(2, 7);
-    deliverator.acquireOrFailSynchronous(3, 7);
-    deliverator.releaseMessages();
+    messageSender.acquireOrFailSynchronous(2, 6);
+    messageSender.acquireOrFailSynchronous(2, 7);
+    messageSender.acquireOrFailSynchronous(3, 7);
+    messageSender.releaseMessages();
 
     //Round 2 virtually skipped
 
     //Round 3
-    deliverator.acquireOrFailSynchronous(3, 3);
-    deliverator.acquireOrFailSynchronous(3, 1);
-    deliverator.acquireOrFailSynchronous(3, 1);
-    deliverator.releaseMessages();
+    messageSender.acquireOrFailSynchronous(3, 3);
+    messageSender.acquireOrFailSynchronous(3, 1);
+    messageSender.acquireOrFailSynchronous(3, 1);
+    messageSender.releaseMessages();
 
     //Round 4 virtually skipped
 
     //assert EVERY node is now rate limited
-    Assertions.assertFalse(deliverator.acquireSingle(1), "Should have failed to acquire but actually acquired");
-    Assertions.assertFalse(deliverator.acquireSingle(2), "Should have failed to acquire but actually acquired");
-    Assertions.assertFalse(deliverator.acquireSingle(3), "Should have failed to acquire but actually acquired");
+    Assertions.assertFalse(messageSender.acquireSingle(1), "Should have failed to acquire but actually acquired");
+    Assertions.assertFalse(messageSender.acquireSingle(2), "Should have failed to acquire but actually acquired");
+    Assertions.assertFalse(messageSender.acquireSingle(3), "Should have failed to acquire but actually acquired");
   }
 }

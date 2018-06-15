@@ -11,10 +11,10 @@ public class ClusterRateLimiters {
   public static ClusterRateLimiter treefill(
       TreeFillConfig treeFillConfig,
       Ticker ticker,
-      MessageDeliverator messageDeliverator
+      MessageSender messageSender
   ) {
     return
-        new TreeFillRateLimiter(treeFillConfig.nodeId, treeFillConfig.clusterSize, treeFillConfig.permitsPerSecond, ticker, messageDeliverator);
+        new TreeFillRateLimiter(treeFillConfig.nodeId, treeFillConfig.clusterSize, treeFillConfig.permitsPerSecond, ticker, messageSender);
   }
 
   public static ClusterRateLimiter divided(long clusterSize, double permitsPerSecond, Ticker ticker) {

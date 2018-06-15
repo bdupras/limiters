@@ -6,7 +6,7 @@ import java.util.concurrent.CompletableFuture;
 
 import com.duprasville.limiters.api.Message;
 
-public class DelayedProxyMsgDeliverator extends ProxyMessageDeliverator {
+public class DelayedProxyMessageSender extends ProxyMessageSender {
 
   private List<CachedMsgFuture> cache = new ArrayList<>();
 

@@ -7,11 +7,11 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import com.duprasville.limiters.futureapi.DistributedRateLimiter;
 import com.duprasville.limiters.api.Message;
-import com.duprasville.limiters.futureapi.FutureMessageDeliverator;
+import com.duprasville.limiters.futureapi.DistributedRateLimiter;
+import com.duprasville.limiters.futureapi.FutureMessageSender;
 
-public class ProxyMessageDeliverator implements FutureMessageDeliverator {
+public class ProxyMessageSender implements FutureMessageSender {
 
   protected Map<Long, DistributedRateLimiter> idToNode = new HashMap<>();
 
@@ -49,11 +49,11 @@ public class ProxyMessageDeliverator implements FutureMessageDeliverator {
 
   public void acquireOrFailSynchronous(long nodeId, int numPermits) {
     List<CompletableFuture<Boolean>> futures = acquireAsync(nodeId, numPermits);
-    for (CompletableFuture<Boolean> future: futures) {
+    for (CompletableFuture<Boolean> future : futures) {
       //This should complete immediately if a test is calling this method
       try {
         Boolean acquired = future.get(2, TimeUnit.SECONDS);
-        if(!acquired)
+        if (!acquired)
           throw new IllegalStateException("Test expects lock to be acquired and it was not");
       } catch (Exception e) {
         throw new RuntimeException("test failed, this should not timeout for this test", e);
