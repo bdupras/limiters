@@ -12,7 +12,7 @@ import com.duprasville.limiters.treefill.domain.TreeFillMessage;
 
 class WindowState {
   // Used to receive & throw away very delayed messages - better than mucking with Option<WindowState>
-  public static final WindowState NIL = new WindowState(1, 1, 1, MessageSender.NIL);
+  static final WindowState NIL = new WindowState(1, 1, 1, MessageSender.NIL);
 
   private final Logger logger;
 
@@ -39,11 +39,11 @@ class WindowState {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("id:" + id)
-        .append(" permits: " + permitCounter)
-        .append(" round: " + round)
-        .append(" allocated: " + selfPermitAllocated)
-        .append(" open: " + windowOpen);
+    sb.append("id:").append(id)
+        .append(" permits: ").append(permitCounter)
+        .append(" round: ").append(round)
+        .append(" allocated: ").append(selfPermitAllocated)
+        .append(" open: ").append(windowOpen);
     return sb.toString();
   }
 
@@ -64,7 +64,7 @@ class WindowState {
     this.id = id;
     this.N = N;
 
-    assertWSuitable(N, W);
+    //assertWSuitable(N, W);
     this.W = W;
 
     this.hasChildren = (N > 1) && (this.id <= (N / 2));

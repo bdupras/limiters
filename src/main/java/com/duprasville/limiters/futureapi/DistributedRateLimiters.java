@@ -68,6 +68,26 @@ public class DistributedRateLimiters {
     return fromClusterRateLimiter(treeFillRateLimiter, executorService);
   }
 
+  public static DistributedRateLimiter randomizedTreefill(
+      TreeFillConfig treeFillConfig,
+      Ticker ticker,
+      FutureMessageSender futureMessageSender,
+      ExecutorService executorService
+  ) {
+
+    MessageSender messageSender = FutureMessageSender.toMessageSender(futureMessageSender);
+
+    TreeFillRateLimiter treeFillRateLimiter = new TreeFillRateLimiter(
+        treeFillConfig.nodeId,
+        treeFillConfig.clusterSize,
+        treeFillConfig.permitsPerSecond,
+        ticker,
+        messageSender
+    );
+
+    return fromClusterRateLimiter(treeFillRateLimiter, executorService);
+  }
+
   public static DistributedRateLimiter divided(
       long clusterSize,
       double permitsPerSecond,
