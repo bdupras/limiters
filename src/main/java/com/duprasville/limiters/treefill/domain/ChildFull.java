@@ -1,6 +1,8 @@
 package com.duprasville.limiters.treefill.domain;
 
-public class ChildFull extends TreeFillMessage {
+import com.duprasville.limiters.api.Message;
+
+public class ChildFull extends Message {
     private final long round;
 
     public ChildFull(long src, long dst, long round) {

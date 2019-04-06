@@ -24,19 +24,9 @@ public class TreeFillRateLimiterNodeWindowExperiments extends TreeFillRateLimite
   }
 
   @Test
-  void runWithAndWithoutRandomization() throws InterruptedException {
+  void runWithRandomization() throws Exception {
     rowLimit = 14;
-    List<Integer> nonRandomizedResults = testManyTrees(false);
     List<Integer> randomizedResults = testManyTrees(true);
-
-    System.out.println("Deterministic (always send Detects up to parent node) WindowStates results:");
-    for (int i = 0; i < nonRandomizedResults.size(); i++) {
-      int rows = i + 1;
-      int numLimiters = (int) (Math.pow(2, rows) - 1);
-      System.out.println("\tFor rows " + rows + " and nodes " + numLimiters + " communication load: " + nonRandomizedResults.get(i));
-    }
-
-    Thread.sleep(1000);
 
     System.out.println("Non-deterministic (send up Detects to random node in row above) WindowStates results:");
     for (int i = 0; i < randomizedResults.size(); i++) {
@@ -44,6 +34,20 @@ public class TreeFillRateLimiterNodeWindowExperiments extends TreeFillRateLimite
       int numLimiters = (int) (Math.pow(2, rows) - 1);
       System.out.println("\tFor rows " + rows + " and nodes " + numLimiters + " communication load: " + randomizedResults.get(i));
     }
+  }
+
+  @Test
+  void runWithoutRandomization() throws Exception {
+      rowLimit = 14;
+      List<Integer> nonRandomizedResults = testManyTrees(false);
+
+      System.out.println("Deterministic (always send Detects up to parent node) WindowStates results:");
+      for (int i = 0; i < nonRandomizedResults.size(); i++) {
+          int rows = i + 1;
+          int numLimiters = (int) (Math.pow(2, rows) - 1);
+          System.out.println("\tFor rows " + rows + " and nodes " + numLimiters + " communication load: " + nonRandomizedResults.get(i));
+      }
+
   }
 
   List<Integer> testManyTrees(boolean useRandomizedWindowStates) {

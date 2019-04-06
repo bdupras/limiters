@@ -1,6 +1,8 @@
 package com.duprasville.limiters.treefill.domain;
 
-public class Detect extends TreeFillMessage {
+import com.duprasville.limiters.api.Message;
+
+public class Detect extends Message {
   private final long permitsAcquired;
 
   public long getPermitsAcquired() {

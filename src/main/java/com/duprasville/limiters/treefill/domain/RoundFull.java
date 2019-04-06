@@ -1,7 +1,9 @@
 package com.duprasville.limiters.treefill.domain;
 
-public class RoundFull extends TreeFillMessage {
-  final long round;
+import com.duprasville.limiters.api.Message;
+
+public class RoundFull extends Message {
+  private final long round;
 
   public RoundFull(long src, long dst, long round) {
     super(src, dst, round, MessageType.RoundFull);
