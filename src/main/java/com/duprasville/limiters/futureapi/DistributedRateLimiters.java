@@ -16,7 +16,7 @@ public class DistributedRateLimiters {
   public static final DistributedRateLimiter UNLIMITED = (permits) -> CompletableFuture.completedFuture(true);
   public static final DistributedRateLimiter NEVER = (permits) -> CompletableFuture.completedFuture(false);
 
-  public static DistributedRateLimiter fromClusterRateLimiter(
+  private static DistributedRateLimiter fromClusterRateLimiter(
       ClusterRateLimiter clusterRateLimiter,
       ExecutorService executorService
   ) {

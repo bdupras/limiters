@@ -18,8 +18,8 @@ class WindowState {
     private long leftChild = 0;
     private long rightChild = 0;
 
-    private final long N;
-    private final long W;
+    private final long numberOfNodes; //N
+    private final long windowSize; //W
     private int shareThisRound = 0;
     private final boolean hasChildren;
     boolean[] childPermitsAllocated;
@@ -42,27 +42,27 @@ class WindowState {
             " open: " + windowOpen;
     }
 
-//    private void assertWSuitable(long N, long W) {
-//        long r = W / N;
+//    private void assertWSuitable(long numberOfNodes, long windowSize) {
+//        long r = windowSize / numberOfNodes;
 //        while ((r > 1) && (r % 2 == 0)) {
 //            r = r >> 1;
 //        }
 //
-//        if ((r != 1) || (W % N != 0)) {
-//            throw new IllegalArgumentException("W must be N * a power of 2");
+//        if ((r != 1) || (windowSize % numberOfNodes != 0)) {
+//            throw new IllegalArgumentException("windowSize must be numberOfNodes * a power of 2");
 //        }
 //    }
 
-    WindowState(long id, long N, long W, MessageSender m) {
+    WindowState(long id, long numberOfNodes, long windowSize, MessageSender m) {
         logger = Logger.getLogger(WindowState.class.getSimpleName());
 
         this.id = id;
-        this.N = N;
+        this.numberOfNodes = numberOfNodes;
 
-        //assertWSuitable(N, W);
-        this.W = W;
+        //assertWSuitable(numberOfNodes, windowSize);
+        this.windowSize = windowSize;
 
-        this.hasChildren = (N > 1) && (this.id <= (N / 2));
+        this.hasChildren = (numberOfNodes > 1) && (this.id <= (numberOfNodes / 2));
         // if we are the root, parentId is 0, which is fine since node ids begin at 1
         this.parentId = id >> 1;
 
@@ -81,7 +81,7 @@ class WindowState {
 
     private void resetThisNode() {
         this.shareThisRound =
-            (int) (this.W / ((long) Math.pow(2, this.round) * this.N));
+            (int) (this.windowSize / ((long) Math.pow(2, this.round) * this.numberOfNodes));
 
         if (this.shareThisRound == 0) {
             this.isThisLastRound = true;
@@ -104,7 +104,7 @@ class WindowState {
 
     public boolean acquire(long permits) {
 
-        if ((this.permitCounter + permits + this.knownPermitsAcquiredAcrossWholeCluster) > this.W) {
+        if ((this.permitCounter + permits + this.knownPermitsAcquiredAcrossWholeCluster) > this.windowSize) {
             return false;
         }
 
@@ -146,7 +146,7 @@ class WindowState {
             case Acquire:
                 long permits = ((Acquire) message).getPermitsAcquired();
 
-                if (this.permitCounter + permits <= this.W) {
+                if (this.permitCounter + permits <= this.windowSize) {
                     this.permitCounter += permits;
                     if (this.permitCounter >= this.shareThisRound) {
                         handleExtraPermitsAcquiredThisRound(this.id);
@@ -336,7 +336,7 @@ class WindowState {
 
     private void advanceRound() {
 
-        this.knownPermitsAcquiredAcrossWholeCluster += this.N * this.shareThisRound;
+        this.knownPermitsAcquiredAcrossWholeCluster += this.numberOfNodes * this.shareThisRound;
 
         this.round++;
         resetThisNode();

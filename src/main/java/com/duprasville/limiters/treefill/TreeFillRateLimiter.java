@@ -91,9 +91,7 @@ public class TreeFillRateLimiter implements ClusterRateLimiter {
             .keySet()
             .stream()
             .filter(frame -> !allowedWindowFrame(currentWindowFrame, frame))
-            .forEach((oldWindow) ->
-                currentWindows.remove(oldWindow)
-            );
+            .forEach(currentWindows::remove);
     }
 
     private boolean allowedWindowFrame(long currentWindowFrame, long subjectWindowFrame) {
